@@ -4,13 +4,13 @@
 - **Created:** 2026-07-27
 - **Target:** Kitroom 1.0 for macOS
 - **Initial agents:** Codex and Claude Code
-- **Initial hosts:** This Mac and `argus`
+- **Initial hosts:** The Mac running Kitroom and user-selected SSH hosts
 
 ## Outcome
 
 Ship a signed and notarized macOS application that can:
 
-1. discover Codex and Claude Code on the local Mac and an SSH host;
+1. discover Codex and Claude Code on the local machine and an SSH host;
 2. build a fresh, evidence-backed inventory of skills, plugins, MCP servers,
    their scopes, origins, and effective states;
 3. browse agent-native plugin marketplaces and the capabilities inside each
@@ -21,8 +21,8 @@ Ship a signed and notarized macOS application that can:
 6. recover from failed local or remote mutations without presenting unknown
    state as success.
 
-Version 1.0 is complete only when the same guarded operation flow works on this
-Mac and `argus`.
+Version 1.0 is complete only when the same guarded operation flow works on a
+local machine and an SSH-accessible remote host.
 
 ## Delivery principles
 
@@ -56,7 +56,8 @@ The scaffold already provides:
 - five passing domain and safety tests;
 - product, architecture, security, roadmap, and agent guidance.
 
-The CLI capability snapshot on the development Mac on 2026-07-27 is:
+The initial adapter plan uses this CLI capability snapshot, captured on
+2026-07-27:
 
 | Surface | Observed version | Read-only interfaces | Mutation interfaces |
 | --- | --- | --- | --- |
@@ -125,13 +126,13 @@ flowchart LR
     M3 --> M4["M4 Inventory product"]
     M4 --> M5["M5 Catalogues and comparison"]
     M5 --> M6["M6 Guarded local mutations"]
-    M6 --> M7["M7 Guarded Argus mutations"]
+    M6 --> M7["M7 Guarded remote mutations"]
     M7 --> M8["M8 Hardening and beta"]
 ```
 
 Do not begin M7 remote mutations before the local mutation gate in M6 passes.
 
-## M0 — Scaffold
+## M0: Scaffold
 
 **Status:** Complete
 
@@ -148,7 +149,7 @@ Do not begin M7 remote mutations before the local mutation gate in M6 passes.
 - `./scripts/verify.sh` passes
 - `main` has a clean baseline commit
 
-## M1 — Application and distribution foundation
+## M1: Application and distribution foundation
 
 ### Objective
 
@@ -199,12 +200,12 @@ feasibility spike rather than being assumed.
 - ADR 0002 records the sandbox/distribution decision and its evidence.
 - CI builds the app and runs the core tests.
 
-## M2 — Read-only host transport
+## M2: Read-only host transport
 
 ### Objective
 
-Reliably run bounded inspection commands on this Mac and `argus`, without
-changing either host.
+Reliably run bounded inspection commands on the local machine and a configured
+remote host without changing either one.
 
 ### Work
 
@@ -262,12 +263,13 @@ changing either host.
 
 ### Exit gate
 
-- Kitroom can discover this Mac and `argus` read-only.
+- Kitroom can discover the local machine and a configured remote host
+  read-only.
 - No files, settings, marketplaces, or agent caches change during discovery.
 - A failed probe produces partial or unavailable state, never an empty-success
   inventory.
 
-## M3 — Codex and Claude inventory adapters
+## M3: Codex and Claude inventory adapters
 
 ### Objective
 
@@ -358,12 +360,12 @@ not be offered for those entries.
 
 ### Exit gate
 
-- Fresh inventories for Claude and Codex render correctly on this Mac and
-  `argus`.
+- Fresh inventories for Claude and Codex render correctly on the local machine
+  and at least one SSH test host.
 - Every displayed item has scope, origin, freshness, and evidence status.
 - Unknown and partial results are plainly distinguishable.
 
-## M4 — Inventory product and persistence
+## M4: Inventory product and persistence
 
 ### Objective
 
@@ -411,7 +413,7 @@ Turn normalized inventory into the first useful end-to-end product.
   and whether the evidence is current on both hosts.
 - No mutating controls are enabled yet.
 
-## M5 — Native catalogues, updates, and comparison
+## M5: Native catalogues, updates, and comparison
 
 ### Objective
 
@@ -459,15 +461,17 @@ changes.
 
 ### Exit gate
 
-- A user can browse native marketplaces and compare this Mac with `argus`.
+- A user can browse native marketplaces and compare a local machine with a
+  remote host.
 - The UI never represents marketplace refresh as installed-package update.
 - No reconciliation occurs automatically.
 
-## M6 — Guarded local mutations
+## M6: Guarded local mutations
 
 ### Objective
 
-Safely change user-level Claude and Codex capability state on the local Mac.
+Safely change user-level Claude and Codex capability state on the local
+machine.
 
 ### Operation engine
 
@@ -509,7 +513,7 @@ draft → planned → awaiting approval → applying → verifying
 5. Add and remove one directly configured MCP server.
 6. Add standalone-skill update after source integrity is defined.
 
-Each path gets its own review and gate. Do not implement a generic “run command”
+Each path gets its own review and gate. Do not implement a generic "run command"
 mutation endpoint.
 
 ### Tests
@@ -529,10 +533,9 @@ mutation endpoint.
 - Every supported local operation shows its exact effect before approval.
 - A completed result has fresh matching evidence.
 - Failures retain a recoverable backup and actionable state.
-- Mutation tests use temporary profiles, never the developer's live agent
-  directories.
+- Mutation tests use temporary profiles, never real user agent directories.
 
-## M7 — Guarded remote mutations on Argus
+## M7: Guarded remote mutations
 
 ### Objective
 
@@ -541,7 +544,8 @@ or weakening host identity and recovery guarantees.
 
 ### Work
 
-1. Bind plans to the verified remote identity, not only the alias `argus`.
+1. Bind plans to the verified remote identity. The editable SSH alias alone is
+   insufficient.
 2. Re-run reachability, identity, agent-version, permissions, exposure, and
    freshness checks immediately before approval and apply.
 3. Use fixed, versioned remote operation envelopes. User and catalogue values
@@ -560,7 +564,7 @@ or weakening host identity and recovery guarantees.
 8. First test the full flow against a disposable remote fixture directory and
    isolated agent profile.
 9. Require a separate explicit approval before the first operation that can
-   affect Argus's live Claude or Codex configuration.
+   affect any non-fixture remote Claude or Codex configuration.
 
 ### Tests
 
@@ -575,15 +579,16 @@ or weakening host identity and recovery guarantees.
 ### Exit gate
 
 - One standalone skill and one agent-native plugin operation complete on an
-  isolated Argus profile with matching verification.
+  isolated remote profile with matching verification.
 - Recovery behaviour is demonstrated for an interrupted remote operation.
-- Only then may a separately approved live Argus operation be attempted.
+- Only then may a separately approved operation target a user-selected remote
+  host outside the test environment.
 
-## M8 — Hardening and beta release
+## M8: Hardening and beta release
 
 ### Objective
 
-Turn the proven workflows into a distributable personal beta.
+Turn the proven workflows into a distributable beta.
 
 ### Work
 
@@ -608,7 +613,7 @@ Turn the proven workflows into a distributable personal beta.
 
 ### Release acceptance matrix
 
-| Scenario | This Mac | Argus |
+| Scenario | Local host | Remote host |
 | --- | --- | --- |
 | Detect Claude and Codex | Required | Required |
 | Complete/partial inventory | Required | Required |
@@ -635,7 +640,7 @@ Keep pull requests narrow and independently verifiable:
 1. Xcode app target and ADR 0002 sandbox spike
 2. `ProcessExecutor`, fake executor, timeouts, and output limits
 3. `LocalHostSession` and local host discovery
-4. `SSHHostSession` and read-only Argus discovery
+4. `SSHHostSession` and read-only remote-host discovery
 5. Domain refinement for packages, capabilities, installations, and evidence
 6. Codex JSON inventory and fixture tests
 7. Claude plugin JSON inventory and fixture tests
@@ -649,7 +654,7 @@ Keep pull requests narrow and independently verifiable:
 15. Claude plugin mutation paths
 16. Codex plugin mutation paths
 17. Direct MCP mutation paths
-18. Isolated remote operation on Argus
+18. Isolated remote-host operation
 19. Security review, signing, notarization, and beta packaging
 
 Each slice must update tests and relevant documentation in the same change.
@@ -671,20 +676,19 @@ Each slice must update tests and relevant documentation in the same change.
 
 - Temporary home and agent configuration roots
 - Fake marketplace repositories
-- No writes to the developer's live `.codex`, `.agents`, or `.claude`
-  directories
+- No writes to real user `.codex`, `.agents`, or `.claude` directories
 
 ### SSH integration
 
 - Disposable local or CI SSH account
 - Controlled permissions, disk failures, disconnects, and host-key changes
-- No mutation tests against live `argus`
+- No mutation tests against live or production remote hosts
 
 ### Live smoke
 
 - Explicitly selected
 - Read-only until M7's isolated remote gate passes
-- Fresh evidence recorded for both this Mac and `argus`
+- Fresh evidence recorded for both local and configured remote test hosts
 
 ## Risk register
 
@@ -709,7 +713,7 @@ Each slice must update tests and relevant documentation in the same change.
 - Automatic cross-host synchronization
 - Team RBAC and policy distribution
 - Public marketplace aggregation beyond agent-native sources
-- Background remote monitoring or a resident Argus daemon
+- Background remote monitoring or a resident remote-host daemon
 - Agent-session orchestration, token use, and cost tracking
 - Windows or Linux desktop clients
 
@@ -735,4 +739,3 @@ starts:
 - [Claude Code MCP](https://code.claude.com/docs/en/mcp)
 - [Apple App Sandbox](https://developer.apple.com/documentation/security/app-sandbox)
 - [Apple notarization](https://developer.apple.com/documentation/security/notarizing-macos-software-before-distribution)
-

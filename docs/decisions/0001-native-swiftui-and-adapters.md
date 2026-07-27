@@ -30,7 +30,7 @@ dependencies.
 - Small distribution surface
 - Agent and transport behaviour can evolve independently
 - Core safety behaviour can be tested without launching the UI
-- The local and Argus workflows can share normalized domain models
+- Local and remote workflows can share normalized domain models
 
 ### Negative
 
@@ -45,4 +45,3 @@ dependencies.
 - A second desktop platform becomes a committed requirement
 - OpenSSH subprocess control cannot meet connection or observability needs
 - The adapter contract fails against live Claude or Codex inventory
-

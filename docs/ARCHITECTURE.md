@@ -112,11 +112,10 @@ for:
 - redacted verification evidence.
 
 Persistence technology is deferred until the inventory model has been exercised
-against real local and Argus data.
+against representative local and remote data.
 
 ## Extension points
 
 New agents implement `AgentAdapter`. New transports implement `HostSession`.
 New catalogue sources should normalize into a separate catalogue model rather
 than masquerading as installed inventory.
-

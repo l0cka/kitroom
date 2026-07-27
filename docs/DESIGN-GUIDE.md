@@ -34,8 +34,8 @@ The mark combines:
 - a dark field representing a controlled operational environment.
 
 The cabinet communicates organization. The `K` gives the mark a distinct
-silhouette. The remote node extends the idea from one Mac to hosts such as
-`argus`.
+silhouette. The remote node shows that Kitroom can manage both local and remote
+hosts.
 
 ### Canonical asset
 
@@ -175,7 +175,7 @@ Sidebar                 Content
 └── Settings
 ```
 
-- Sidebar ideal width: 240–260 pt
+- Sidebar ideal width: 240 to 260 pt
 - Main content minimum width: 640 pt
 - Keep primary actions in the toolbar or the content header.
 - Use sheets for focused plan approval.
@@ -187,7 +187,7 @@ Use SF Symbols in the product UI. Keep one semantic meaning per symbol.
 
 | Meaning | Symbol direction |
 | --- | --- |
-| Local Mac | `laptopcomputer` |
+| Local host | `laptopcomputer` |
 | Remote host | `server.rack` |
 | Skill | `text.book.closed` |
 | Plugin | `shippingbox` |
@@ -267,7 +267,7 @@ The review sheet must show:
 8. verification probes.
 
 The approval button names the action: **Install skill**, **Disable plugin**, or
-**Uninstall from Argus**. Do not use a generic **Continue** button.
+**Uninstall from build-server**. Do not use a generic **Continue** button.
 
 ### Evidence inspector
 
@@ -302,16 +302,16 @@ Only one visually primary action should appear in a decision area.
 
 Write in calm, direct language:
 
-- “Argus could not be verified.”
-- “Three probes succeeded; one requires permission.”
-- “This plugin also installs two skills and one MCP server.”
-- “The command completed, but verification did not.”
+- "The remote host could not be verified."
+- "Three probes succeeded; one requires permission."
+- "This plugin also installs two skills and one MCP server."
+- "The command completed, but verification did not."
 
 Avoid:
 
-- “Everything looks great!”
-- “No plugins found” after a failed scan.
-- “Success” without the verified result.
+- "Everything looks great!"
+- "No plugins found" after a failed scan.
+- "Success" without the verified result.
 - Agent-specific jargon when a precise plain-language label exists.
 
 ### Formatting

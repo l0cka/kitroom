@@ -4,7 +4,7 @@
 
 <h1 align="center">Kitroom</h1>
 
-<p align="center"><strong>Equip every coding agent, on every machine.</strong></p>
+<p align="center"><strong>A macOS control centre for coding-agent extensions.</strong></p>
 
 <p align="center">
   <a href="https://github.com/l0cka/kitroom/actions/workflows/ci.yml"><img src="https://github.com/l0cka/kitroom/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
@@ -13,10 +13,10 @@
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-3DD6B3.svg" alt="MIT License"></a>
 </p>
 
-Kitroom is a native macOS application for browsing, inspecting, installing,
-updating, disabling, and uninstalling extensions used by coding agents. The
-first supported agents are Claude Code and Codex; the first supported hosts are
-the local Mac and SSH-accessible servers such as `argus`.
+Kitroom is an open-source native macOS project for managing the skills,
+plugins, MCP servers, and configuration used by coding agents. It is designed
+to work on the Mac running Kitroom and on remote macOS or Linux hosts over
+OpenSSH. Claude Code and Codex are the first planned integrations.
 
 The name comes from the room where equipment is stored, checked, maintained,
 and issued. Kitroom treats skills, plugins, and MCP servers as equipment:
@@ -53,13 +53,12 @@ placeholder data as live state.
 6. **Fail closed.** Unknown state is never rendered as healthy, installed, or
    absent.
 
-## Initial scope
+## Planned initial scope
 
 ### Hosts
 
-- This Mac
+- The Mac running Kitroom
 - Remote macOS or Linux hosts reachable through an OpenSSH host alias
-- `argus` as the first real remote-host integration
 
 ### Agents
 
@@ -92,9 +91,8 @@ flowchart LR
     Core --> Claude["Claude adapter"]
     Codex --> Session["Host session"]
     Claude --> Session
-    Session --> Local["Local Mac"]
-    Session --> SSH["OpenSSH host alias"]
-    SSH --> Argus["argus"]
+    Session --> Local["Local machine"]
+    Session --> SSH["OpenSSH remote host"]
 ```
 
 Agent-specific logic is isolated behind adapters. Host-specific execution is

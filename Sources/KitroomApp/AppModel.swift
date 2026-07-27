@@ -12,12 +12,12 @@ final class AppModel: ObservableObject {
             name: "This Mac",
             connection: .local
         )
-        let argus = ManagedHost(
-            name: "Argus",
-            connection: .ssh(alias: "argus")
+        let remote = ManagedHost(
+            name: "Build Server",
+            connection: .ssh(alias: "build-server")
         )
 
-        hosts = [local, argus]
+        hosts = [local, remote]
         selectedHostID = local.id
     }
 
@@ -25,4 +25,3 @@ final class AppModel: ObservableObject {
         hosts.first { $0.id == selectedHostID }
     }
 }
-

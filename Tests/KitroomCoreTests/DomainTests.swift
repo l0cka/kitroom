@@ -5,12 +5,12 @@ import XCTest
 final class DomainTests: XCTestCase {
     func testRemoteHostDescriptionPreservesAlias() {
         let host = ManagedHost(
-            name: "Argus",
-            connection: .ssh(alias: "argus")
+            name: "Build Server",
+            connection: .ssh(alias: "build-server")
         )
 
         XCTAssertTrue(host.connection.isRemote)
-        XCTAssertEqual(host.connection.description, "SSH · argus")
+        XCTAssertEqual(host.connection.description, "SSH · build-server")
     }
 
     func testMutationPlanRequiresConfirmation() {
@@ -81,11 +81,10 @@ final class DomainTests: XCTestCase {
     }
 
     func testHostAliasValidationRejectsShellSyntax() {
-        XCTAssertTrue(HostAliasValidator.isValid("argus"))
+        XCTAssertTrue(HostAliasValidator.isValid("build-server"))
         XCTAssertTrue(HostAliasValidator.isValid("dev.example-1"))
         XCTAssertFalse(HostAliasValidator.isValid(""))
-        XCTAssertFalse(HostAliasValidator.isValid("argus; reboot"))
+        XCTAssertFalse(HostAliasValidator.isValid("build-server; reboot"))
         XCTAssertFalse(HostAliasValidator.isValid("$(whoami)"))
     }
 }
-

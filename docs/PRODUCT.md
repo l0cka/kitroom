@@ -2,16 +2,16 @@
 
 ## One-sentence promise
 
-Kitroom gives developers one trustworthy macOS interface for equipping Claude
-Code and Codex with the right capabilities on local and remote machines.
+Kitroom gives developers one macOS interface for inspecting and managing Claude
+Code and Codex capabilities on local and remote machines.
 
 ## Problem
 
 Coding-agent capabilities are distributed across configuration files,
 agent-specific directories, plugin registries, marketplaces, and runtime
 injection layers. The same developer may have different or stale state on a
-MacBook and a remote server. Existing command-line workflows make it difficult
-to answer basic questions:
+local machine and a remote server. Existing command-line workflows make it
+difficult to answer basic questions:
 
 - What is installed here?
 - Where did it come from?
@@ -35,7 +35,7 @@ SSH-accessible development or production servers.
 
 ## MVP jobs
 
-1. Add the local Mac automatically.
+1. Add the Mac running Kitroom automatically.
 2. Add a remote host using an existing OpenSSH alias.
 3. Detect Claude Code and Codex on each host.
 4. Build a fresh, evidence-backed inventory.
@@ -71,10 +71,10 @@ SSH-accessible development or production servers.
 
 ## Success criteria
 
-- A user can accurately inventory this Mac and `argus`.
+- A user can accurately inventory the local machine and at least one
+  SSH-accessible remote host.
 - Unknown or partial state is never shown as complete.
 - Every mutation is previewed and bound to an explicit approval.
 - Every completed operation includes fresh post-change verification.
 - A failed operation leaves a recoverable backup and actionable evidence.
 - Adapter-specific details do not leak into unrelated UI or transport code.
-

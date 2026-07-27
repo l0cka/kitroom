@@ -1,12 +1,12 @@
 # Roadmap
 
-This roadmap is ordered by risk reduction and product learning, not by visual
-completeness.
+This roadmap prioritizes risk reduction and product learning. Visual
+completeness comes later.
 
 See [Implementation plan](IMPLEMENTATION_PLAN.md) for the detailed work
 breakdown, dependencies, tests, and exit gates behind these phases.
 
-## Phase 0 — Scaffold
+## Phase 0: Scaffold
 
 - [x] Choose the Kitroom name
 - [x] Create a native SwiftUI package
@@ -15,21 +15,21 @@ breakdown, dependencies, tests, and exit gates behind these phases.
 - [x] Define approval digest and baseline safety requirements
 - [x] Add tests and verification script
 
-## Phase 1 — Read-only discovery
+## Phase 1: Read-only discovery
 
 - [ ] Implement local process execution with bounded output and timeout
 - [ ] Implement SSH execution using OpenSSH host aliases
-- [ ] Discover local Mac platform and home-directory context
-- [ ] Discover Argus platform and home-directory context
+- [ ] Discover local platform and home-directory context
+- [ ] Discover a configured remote host's platform and home-directory context
 - [ ] Capability-detect installed Claude and Codex versions
 - [ ] Build fixture-based parsers before using live command output
 - [ ] Render complete, partial, unavailable, and stale inventory states
 - [ ] Add redacted diagnostics
 
-Exit criterion: Kitroom accurately inventories this Mac and Argus without
-changing either host.
+Exit criterion: Kitroom accurately inventories a local machine and a configured
+remote host without changing either one.
 
-## Phase 2 — Catalogue and comparison
+## Phase 2: Catalogue and comparison
 
 - [ ] Define normalized catalogue records
 - [ ] Add first curated source
@@ -40,7 +40,7 @@ changing either host.
 Exit criterion: a user can identify what differs, why, and what source would be
 used to reconcile it.
 
-## Phase 3 — Guarded local mutations
+## Phase 3: Guarded local mutations
 
 - [ ] Implement immutable operation plans
 - [ ] Add plan expiry and live-state invalidation
@@ -52,18 +52,18 @@ used to reconcile it.
 Exit criterion: one local capability can be safely installed and removed with
 preview, approval, backup, verification, and rollback.
 
-## Phase 4 — Guarded remote mutations
+## Phase 4: Guarded remote mutations
 
 - [ ] Bind approval to verified remote-host identity
 - [ ] Implement remote backups and atomic writes
 - [ ] Add connection-loss and partial-application recovery
-- [ ] Apply one approved operation to Argus
+- [ ] Apply one approved operation to an isolated remote test host
 - [ ] Compare post-change state with the approved plan
 
-Exit criterion: the same guarded workflow works on Argus with honest recovery
-behaviour.
+Exit criterion: the same guarded workflow works on a remote host and reports
+recovery state honestly.
 
-## Phase 5 — Product hardening
+## Phase 5: Product hardening
 
 - [ ] Accessibility and keyboard-navigation audit
 - [ ] Signed and notarized app distribution

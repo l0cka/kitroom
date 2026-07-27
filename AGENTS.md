@@ -1,4 +1,4 @@
-# AGENTS.md — Kitroom repository guide
+# AGENTS.md: Kitroom repository guide
 
 ## Project overview
 
@@ -156,9 +156,9 @@ Tests must cover:
 - post-change verification failures;
 - redaction of sensitive values.
 
-Never run mutation tests against the developer's real home directory or
-`argus`. Use temporary fixtures and fake sessions. Live integration tests must
-be explicitly selected and remain read-only until a separate guarded test
+Never run mutation tests against a developer's real home directory or a live
+remote host. Use temporary fixtures and fake sessions. Live integration tests
+must be explicitly selected and remain read-only until a separate guarded test
 environment exists.
 
 ## Documentation standard
@@ -170,6 +170,9 @@ Documentation must be:
 - **Durable:** avoid claims about fast-moving CLI surfaces unless capability
   detection or a cited compatibility test supports them.
 - **Specific:** name trust boundaries, failure states, and ownership.
+- **Public-facing:** use generic host roles and sanitized examples. Keep
+  personal machine names, private infrastructure, usernames, and absolute
+  paths out of tracked documentation and fixtures.
 
 Update the relevant product, architecture, security, roadmap, or ADR document
 when a change alters the system contract.
@@ -185,4 +188,3 @@ Before handoff:
 4. Confirm new mutations have preview, approval, rollback, and verification
    paths.
 5. Update documentation for any changed behaviour or decision.
-
