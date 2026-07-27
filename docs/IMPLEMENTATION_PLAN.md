@@ -223,6 +223,8 @@ incomplete discovery for version 1.
 
 ## M2: Read-only host transport
 
+**Status:** Complete
+
 ### Objective
 
 Reliably run bounded inspection commands on the local machine and a configured
@@ -271,6 +273,40 @@ remote host without changing either one.
   - Unreachable
   - Partial discovery
 - Show the resolved host separately from the friendly display name.
+
+### Delivered
+
+- `SystemProcessExecutor` with absolute executable validation, explicit
+  environment, bounded stdout/stderr, timeout, cancellation, exit, and signal
+  reporting
+- `LocalHostSession` and `SSHHostSession` behind the shared `HostSession`
+  contract
+- OpenSSH BatchMode transport using validated aliases and the user's existing
+  host-key policy
+- Strict POSIX quoting for remote executables, arguments, Unicode, newlines,
+  quotes, and metacharacters
+- Bounded OpenSSH configuration summaries without identity-file or proxy
+  command disclosure
+- Platform, architecture, home directory, shell, hostname, path access, stable
+  identity evidence, and agent version discovery
+- Host setup, manual check, cancellation, resolved-host display, and explicit
+  connection-state UI
+- Fixture-driven transport, disconnect, parser, and failure-state tests
+
+### Gate evidence
+
+On 2026-07-27, the native app completed a read-only discovery of:
+
+- the local development Mac as reachable Darwin/arm64 with both initial agent
+  versions detected; and
+- a configured OpenSSH alias as reachable Linux/x86_64 with both initial agent
+  versions detected.
+
+The repository does not name or preconfigure that private test host. The live
+smoke changed no remote files or settings. Automated tests cover output
+truncation, timeout, cancellation, signal and non-zero exits, explicit
+environment handling, alias validation, argument encoding, SSH error
+classification, and connection loss during discovery.
 
 ### Tests
 

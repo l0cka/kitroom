@@ -32,6 +32,12 @@
 		C00000000000000000000024 /* KitroomLogging.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00000000000000000000024 /* KitroomLogging.swift */; };
 		C00000000000000000000025 /* OperationApprovalStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00000000000000000000025 /* OperationApprovalStore.swift */; };
 		C00000000000000000000026 /* ProcessExecutor.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00000000000000000000026 /* ProcessExecutor.swift */; };
+		C00000000000000000000027 /* HostDiscovery.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00000000000000000000027 /* HostDiscovery.swift */; };
+		C00000000000000000000028 /* HostDiscoveryService.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00000000000000000000028 /* HostDiscoveryService.swift */; };
+		C00000000000000000000029 /* LocalHostSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00000000000000000000029 /* LocalHostSession.swift */; };
+		C00000000000000000000030 /* RemoteCommandEncoder.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00000000000000000000030 /* RemoteCommandEncoder.swift */; };
+		C00000000000000000000031 /* SSHConfigurationResolver.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00000000000000000000031 /* SSHConfigurationResolver.swift */; };
+		C00000000000000000000032 /* SSHHostSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00000000000000000000032 /* SSHHostSession.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -84,6 +90,12 @@
 		B00000000000000000000024 /* KitroomLogging.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KitroomLogging.swift; sourceTree = "<group>"; };
 		B00000000000000000000025 /* OperationApprovalStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OperationApprovalStore.swift; sourceTree = "<group>"; };
 		B00000000000000000000026 /* ProcessExecutor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProcessExecutor.swift; sourceTree = "<group>"; };
+		B00000000000000000000027 /* HostDiscovery.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HostDiscovery.swift; sourceTree = "<group>"; };
+		B00000000000000000000028 /* HostDiscoveryService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HostDiscoveryService.swift; sourceTree = "<group>"; };
+		B00000000000000000000029 /* LocalHostSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalHostSession.swift; sourceTree = "<group>"; };
+		B00000000000000000000030 /* RemoteCommandEncoder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RemoteCommandEncoder.swift; sourceTree = "<group>"; };
+		B00000000000000000000031 /* SSHConfigurationResolver.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SSHConfigurationResolver.swift; sourceTree = "<group>"; };
+		B00000000000000000000032 /* SSHHostSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SSHHostSession.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -158,6 +170,7 @@
 			isa = PBXGroup;
 			children = (
 				B00000000000000000000010 /* AgentKind.swift */,
+				B00000000000000000000027 /* HostDiscovery.swift */,
 				B00000000000000000000013 /* InventorySnapshot.swift */,
 				B00000000000000000000011 /* ManagedExtension.swift */,
 				B00000000000000000000012 /* ManagedHost.swift */,
@@ -198,12 +211,17 @@
 			isa = PBXGroup;
 			children = (
 				B00000000000000000000018 /* HostConnectionFactory.swift */,
+				B00000000000000000000028 /* HostDiscoveryService.swift */,
 				B00000000000000000000019 /* HostSession.swift */,
 				B00000000000000000000022 /* KitroomClock.swift */,
 				B00000000000000000000024 /* KitroomLogging.swift */,
 				B00000000000000000000023 /* KitroomPersistence.swift */,
+				B00000000000000000000029 /* LocalHostSession.swift */,
 				B00000000000000000000025 /* OperationApprovalStore.swift */,
 				B00000000000000000000026 /* ProcessExecutor.swift */,
+				B00000000000000000000030 /* RemoteCommandEncoder.swift */,
+				B00000000000000000000031 /* SSHConfigurationResolver.swift */,
+				B00000000000000000000032 /* SSHHostSession.swift */,
 			);
 			path = Infrastructure;
 			sourceTree = "<group>";
@@ -317,17 +335,23 @@
 				C00000000000000000000016 /* ClaudeAdapter.swift in Sources */,
 				C00000000000000000000017 /* CodexAdapter.swift in Sources */,
 				C00000000000000000000018 /* HostConnectionFactory.swift in Sources */,
+				C00000000000000000000027 /* HostDiscovery.swift in Sources */,
+				C00000000000000000000028 /* HostDiscoveryService.swift in Sources */,
 				C00000000000000000000019 /* HostSession.swift in Sources */,
 				C00000000000000000000013 /* InventorySnapshot.swift in Sources */,
 				C00000000000000000000022 /* KitroomClock.swift in Sources */,
 				C00000000000000000000024 /* KitroomLogging.swift in Sources */,
 				C00000000000000000000023 /* KitroomPersistence.swift in Sources */,
+				C00000000000000000000029 /* LocalHostSession.swift in Sources */,
 				C00000000000000000000011 /* ManagedExtension.swift in Sources */,
 				C00000000000000000000012 /* ManagedHost.swift in Sources */,
 				C00000000000000000000020 /* OperationApproval.swift in Sources */,
 				C00000000000000000000025 /* OperationApprovalStore.swift in Sources */,
 				C00000000000000000000014 /* OperationPlan.swift in Sources */,
 				C00000000000000000000026 /* ProcessExecutor.swift in Sources */,
+				C00000000000000000000030 /* RemoteCommandEncoder.swift in Sources */,
+				C00000000000000000000031 /* SSHConfigurationResolver.swift in Sources */,
+				C00000000000000000000032 /* SSHHostSession.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

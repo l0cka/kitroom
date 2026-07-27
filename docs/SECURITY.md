@@ -22,7 +22,9 @@ output, and command arguments as untrusted input.
 - No `sudo` in the initial scope.
 - No unreviewed background synchronisation.
 - No secrets in activity logs or diagnostics.
-- No shell construction from interpolated catalogue or user strings.
+- No unquoted shell construction from catalogue or user strings. OpenSSH remote
+  requests use a fixed encoder that single-quotes every executable, argument,
+  and allowed environment value.
 - No recursive deletion based on an unresolved path.
 - No claim of success before post-change inspection.
 
@@ -83,4 +85,3 @@ credential files, and unrestricted configuration contents.
 - Operation-log integrity
 - SSH remote-host identity binding
 - Security review of update and rollback behaviour
-

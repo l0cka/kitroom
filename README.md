@@ -25,20 +25,23 @@ verifiable state.
 
 ## Project status
 
-Kitroom is at the scaffold stage. The repository currently contains:
+Kitroom is in active early development. The repository currently contains:
 
 - a tracked Xcode macOS application with a provisional app icon;
 - a native sidebar shell for hosts, inventory, catalogue, activity, and
   settings;
 - domain models for hosts, agents, extensions, inventory, and operations;
-- local and SSH host abstractions;
+- bounded local process execution and read-only OpenSSH transport;
+- local and remote host discovery with explicit failure states;
+- OpenSSH-alias setup that preserves the user's keys and host trust;
 - initial Codex and Claude adapter boundaries;
 - an approval-first operation model;
 - unit tests and project documentation.
 
-Inventory collection and mutating operations are deliberately not wired up
-yet. The UI labels unverified state as **Not scanned** rather than presenting
-placeholder data as live state.
+Extension inventory and mutating operations are deliberately not wired up yet.
+The Hosts screen can verify platform details and agent availability, and labels
+unverified or incomplete state explicitly rather than presenting placeholder
+data as live state.
 
 ## Product principles
 
@@ -159,7 +162,8 @@ Run the complete local verification:
 │       ├── Domain/            # Hosts, extensions, inventory, operations
 │       └── Infrastructure/    # Local/SSH host-session contracts
 ├── Tests/
-│   └── KitroomCoreTests/
+│   ├── KitroomCoreTests/
+│   └── SandboxProbe/          # Reproducible App Sandbox feasibility probe
 ├── docs/
 │   ├── decisions/             # Architecture decision records
 │   ├── ARCHITECTURE.md
@@ -168,8 +172,7 @@ Run the complete local verification:
 │   ├── PRODUCT.md
 │   ├── ROADMAP.md
 │   └── SECURITY.md
-└── scripts/
-    └── verify.sh
+└── scripts/                   # Verification and sandbox-probe builders
 ```
 
 ## Contributing

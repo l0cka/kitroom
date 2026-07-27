@@ -38,6 +38,7 @@ and command-line development runs.
 Contains immutable, `Sendable` values:
 
 - `ManagedHost`
+- `HostDiscoverySnapshot`
 - `AgentKind`
 - `ManagedExtension`
 - `InventorySnapshot`
@@ -61,14 +62,23 @@ Candidate paths guide discovery but never prove installation by themselves.
 ### KitroomCore.Infrastructure
 
 `HostSession` is the execution boundary shared by local and SSH connections.
-Requests use an executable plus an argument array. Callers do not supply a
-pre-concatenated shell string.
+Requests use an absolute executable plus an argument array, an explicit
+environment allowlist, a timeout, and output limits. Local execution never
+invokes an implicit shell. The SSH transport encodes those values into one
+strictly quoted POSIX command because OpenSSH's remote-command protocol passes
+through the remote login shell.
 
-The first implementations should be:
+The implemented boundaries are:
 
-- `LocalHostSession`, backed by `Process`;
-- `SSHHostSession`, backed by `/usr/bin/ssh` and an existing host alias;
-- fake and fixture sessions for tests.
+- `SystemProcessExecutor`, backed by `Process`, with bounded concurrent output,
+  timeout, cancellation, exit, and signal reporting;
+- `LocalHostSession`, which forwards structured requests;
+- `SSHHostSession`, backed by `/usr/bin/ssh`, BatchMode, a validated existing
+  alias, and the user's existing host-key policy;
+- `SSHConfigurationResolver`, which exposes only a bounded resolved summary;
+- `HostDiscoveryService`, which produces explicit reachable, partial,
+  authentication, identity-change, unreachable, and cancelled states;
+- fake and fixture sessions used by the transport tests.
 
 ## Inventory
 

@@ -12,10 +12,11 @@ host after an operation. A successful command exit is not sufficient evidence.
 
 ## Current status
 
-This repository is an early, buildable scaffold. It does not yet execute
-inventory or mutation commands. Keep documentation and UI honest about what is
-implemented. Use **Not scanned**, **Unknown**, or **Not implemented** when live
-state has not been established.
+This repository implements bounded, read-only host discovery for the local Mac
+and user-selected OpenSSH aliases. It does not yet inventory extensions or
+execute mutations. Keep documentation and UI honest about what is implemented.
+Use **Not checked**, **Unknown**, **Partial discovery**, or **Not implemented**
+when live state has not been established.
 
 ## Technology
 

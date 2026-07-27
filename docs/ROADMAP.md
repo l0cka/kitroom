@@ -33,11 +33,11 @@ is supported by recorded sandbox evidence.
 
 ## Phase 2: Read-only discovery
 
-- [ ] Implement local process execution with bounded output and timeout
-- [ ] Implement SSH execution using OpenSSH host aliases
-- [ ] Discover local platform and home-directory context
-- [ ] Discover a configured remote host's platform and home-directory context
-- [ ] Capability-detect installed Claude and Codex versions
+- [x] Implement local process execution with bounded output and timeout
+- [x] Implement SSH execution using OpenSSH host aliases
+- [x] Discover local platform and home-directory context
+- [x] Discover a configured remote host's platform and home-directory context
+- [x] Capability-detect installed Claude and Codex versions
 - [ ] Build fixture-based parsers before using live command output
 - [ ] Render complete, partial, unavailable, and stale inventory states
 - [ ] Add redacted diagnostics
