@@ -27,7 +27,9 @@ verifiable state.
 
 Kitroom is at the scaffold stage. The repository currently contains:
 
-- a buildable SwiftUI macOS application shell;
+- a tracked Xcode macOS application with a provisional app icon;
+- a native sidebar shell for hosts, inventory, catalogue, activity, and
+  settings;
 - domain models for hosts, agents, extensions, inventory, and operations;
 - local and SSH host abstractions;
 - initial Codex and Claude adapter boundaries;
@@ -119,7 +121,18 @@ swift test
 swift run Kitroom
 ```
 
-Or open `Package.swift` in Xcode.
+The Swift package remains available for core development and tests. To run the
+native application, open `Kitroom.xcodeproj` and use the shared `Kitroom`
+scheme. To build the app bundle from the command line:
+
+```bash
+xcodebuild \
+  -project Kitroom.xcodeproj \
+  -scheme Kitroom \
+  -configuration Debug \
+  CODE_SIGNING_ALLOWED=NO \
+  build
+```
 
 Run the complete local verification:
 
@@ -135,10 +148,12 @@ Run the complete local verification:
 ├── Assets/
 │   └── Brand/                  # Logo and identity assets
 ├── LICENSE
+├── Kitroom.xcodeproj/          # Native macOS application project
 ├── Package.swift
 ├── README.md
 ├── Sources/
 │   ├── KitroomApp/            # SwiftUI composition and presentation
+│   │   └── Resources/         # App icon, logo, and color assets
 │   └── KitroomCore/
 │       ├── Adapters/          # Claude and Codex boundaries
 │       ├── Domain/            # Hosts, extensions, inventory, operations

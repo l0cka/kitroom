@@ -29,6 +29,10 @@ Owns presentation, navigation, user interaction, accessibility, and main-actor
 state. Views work with normalized core models and never construct shell
 commands.
 
+The tracked Xcode project produces `Kitroom.app` and embeds `KitroomCore` as a
+framework. Swift Package Manager remains the fast path for core builds, tests,
+and command-line development runs.
+
 ### KitroomCore.Domain
 
 Contains immutable, `Sendable` values:

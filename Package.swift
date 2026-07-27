@@ -23,7 +23,10 @@ let package = Package(
         ),
         .executableTarget(
             name: "KitroomApp",
-            dependencies: ["KitroomCore"]
+            dependencies: ["KitroomCore"],
+            resources: [
+                .process("Resources")
+            ]
         ),
         .testTarget(
             name: "KitroomCoreTests",
@@ -31,4 +34,3 @@ let package = Package(
         )
     ]
 )
-

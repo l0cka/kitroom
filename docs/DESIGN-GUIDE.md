@@ -49,6 +49,10 @@ beta, redraw the mark as a precise vector master and export the complete macOS
 app-icon set. The vector redraw must preserve the selected silhouette and
 proportions rather than reinterpret the brand.
 
+The tracked `AppIcon.appiconset` is a provisional set mechanically scaled from
+the raster master. It makes development builds identifiable but does not
+replace the planned vector redraw and small-size glyph.
+
 The concept PNG includes restrained tonal depth in the dark field and cabinet.
 The vector master should normalize the geometry and colors while retaining the
 same overall depth and contrast.

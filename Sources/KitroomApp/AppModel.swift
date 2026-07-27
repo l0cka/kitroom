@@ -3,25 +3,21 @@ import KitroomCore
 
 @MainActor
 final class AppModel: ObservableObject {
+    @Published var selectedSection: AppSection? = .hosts
     @Published var selectedHostID: ManagedHost.ID?
 
     let hosts: [ManagedHost]
 
-    init() {
-        let local = ManagedHost(
-            name: "This Mac",
-            connection: .local
-        )
-        let remote = ManagedHost(
-            name: "Build Server",
-            connection: .ssh(alias: "build-server")
-        )
-
-        hosts = [local, remote]
-        selectedHostID = local.id
+    init(hosts: [ManagedHost] = [ManagedHost(name: "This Mac", connection: .local)]) {
+        self.hosts = hosts
+        selectedHostID = hosts.first?.id
     }
 
     var selectedHost: ManagedHost? {
         hosts.first { $0.id == selectedHostID }
+    }
+
+    var remoteHostCount: Int {
+        hosts.filter(\.connection.isRemote).count
     }
 }

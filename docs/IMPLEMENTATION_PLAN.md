@@ -151,6 +151,8 @@ Do not begin M7 remote mutations before the local mutation gate in M6 passes.
 
 ## M1: Application and distribution foundation
 
+**Status:** In progress
+
 ### Objective
 
 Turn the Swift package executable into a maintainable macOS application bundle
@@ -179,6 +181,21 @@ without weakening the testable core.
    - test persistence of security-scoped bookmarks;
    - document which required behaviours fail or add unacceptable friction.
 7. Record ADR 0002 for distribution and sandboxing.
+
+### Delivered
+
+- Tracked `Kitroom.xcodeproj` with a shared macOS application scheme
+- Provisional app icon and brand assets
+- Bundle identifier `com.l0cka.kitroom`
+- macOS 14 deployment target and Swift 6 build settings
+- Debug and Release configurations
+- Hardened Runtime build setting
+- Embedded `KitroomCore` framework
+- Direct-distribution and sandbox decision in ADR 0002
+- Package, test, and application-bundle checks in `scripts/verify.sh`
+
+Structured logging, full dependency injection, an explicit test build
+configuration, and sandbox feasibility testing remain open.
 
 ### Recommendation
 

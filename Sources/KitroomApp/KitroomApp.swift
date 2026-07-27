@@ -8,10 +8,9 @@ struct KitroomApp: App {
         WindowGroup {
             DashboardView()
                 .environmentObject(model)
-                .frame(minWidth: 900, minHeight: 600)
+                .frame(minWidth: 960, minHeight: 640)
         }
         .windowStyle(.titleBar)
-        .defaultSize(width: 1120, height: 720)
+        .defaultSize(width: 1180, height: 760)
     }
 }
-

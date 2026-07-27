@@ -36,7 +36,7 @@ frameworks are insufficient and the trade-off is documented.
 swift build             # Compile all targets
 swift test              # Run unit tests
 swift run Kitroom       # Launch the development app
-./scripts/verify.sh     # Required handoff check
+./scripts/verify.sh     # Build package, test core, and build the .app
 ```
 
 ## Project structure
@@ -45,7 +45,9 @@ swift run Kitroom       # Launch the development app
 Sources/KitroomApp/
   KitroomApp.swift       # Application entry point
   AppModel.swift         # Main-actor UI state
+  AppSection.swift       # Primary navigation destinations
   DashboardView.swift    # Current presentation shell
+  Resources/             # App icon, logo, and color assets
 
 Sources/KitroomCore/
   Domain/                # Agent, host, extension, inventory, operation types
@@ -54,6 +56,7 @@ Sources/KitroomCore/
 
 Tests/KitroomCoreTests/  # Core behaviour and safety invariants
 docs/                    # Product, architecture, security, roadmap, ADRs
+Kitroom.xcodeproj/       # Native application bundle target and shared scheme
 ```
 
 ## Architecture rules

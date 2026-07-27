@@ -15,7 +15,23 @@ breakdown, dependencies, tests, and exit gates behind these phases.
 - [x] Define approval digest and baseline safety requirements
 - [x] Add tests and verification script
 
-## Phase 1: Read-only discovery
+## Phase 1: Application foundation
+
+- [x] Add a tracked Xcode macOS application project and shared scheme
+- [x] Add provisional app icon, logo, and accent-color assets
+- [x] Build the Hosts, Inventory, Catalogue, Activity, and Settings shell
+- [x] Remove fabricated inventory and remote-host state
+- [x] Record the initial distribution and sandbox decision
+- [x] Build the application bundle in the required verification script
+- [ ] Add structured privacy-aware logging
+- [ ] Add dependency injection for sessions, clocks, persistence, and approvals
+- [ ] Complete the App Sandbox feasibility tests
+
+Exit criterion: the application bundle, core library, and tests build together;
+the remaining runtime boundaries are injectable; and the distribution decision
+is supported by recorded sandbox evidence.
+
+## Phase 2: Read-only discovery
 
 - [ ] Implement local process execution with bounded output and timeout
 - [ ] Implement SSH execution using OpenSSH host aliases
@@ -29,7 +45,7 @@ breakdown, dependencies, tests, and exit gates behind these phases.
 Exit criterion: Kitroom accurately inventories a local machine and a configured
 remote host without changing either one.
 
-## Phase 2: Catalogue and comparison
+## Phase 3: Catalogue and comparison
 
 - [ ] Define normalized catalogue records
 - [ ] Add first curated source
@@ -40,7 +56,7 @@ remote host without changing either one.
 Exit criterion: a user can identify what differs, why, and what source would be
 used to reconcile it.
 
-## Phase 3: Guarded local mutations
+## Phase 4: Guarded local mutations
 
 - [ ] Implement immutable operation plans
 - [ ] Add plan expiry and live-state invalidation
@@ -52,7 +68,7 @@ used to reconcile it.
 Exit criterion: one local capability can be safely installed and removed with
 preview, approval, backup, verification, and rollback.
 
-## Phase 4: Guarded remote mutations
+## Phase 5: Guarded remote mutations
 
 - [ ] Bind approval to verified remote-host identity
 - [ ] Implement remote backups and atomic writes
@@ -63,7 +79,7 @@ preview, approval, backup, verification, and rollback.
 Exit criterion: the same guarded workflow works on a remote host and reports
 recovery state honestly.
 
-## Phase 5: Product hardening
+## Phase 6: Product hardening
 
 - [ ] Accessibility and keyboard-navigation audit
 - [ ] Signed and notarized app distribution
