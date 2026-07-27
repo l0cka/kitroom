@@ -3,6 +3,9 @@
 This roadmap is ordered by risk reduction and product learning, not by visual
 completeness.
 
+See [Implementation plan](IMPLEMENTATION_PLAN.md) for the detailed work
+breakdown, dependencies, tests, and exit gates behind these phases.
+
 ## Phase 0 — Scaffold
 
 - [x] Choose the Kitroom name
@@ -69,4 +72,3 @@ behaviour.
 - [ ] Migration strategy for domain and persistence schemas
 - [ ] Opt-in update notifications
 - [ ] Additional agent adapter evaluation
-

@@ -91,7 +91,8 @@ isolated behind sessions. This lets the same inventory and operation workflow
 work locally and remotely without pretending that Claude and Codex use
 identical configuration formats.
 
-See [Architecture](docs/ARCHITECTURE.md), [Product](docs/PRODUCT.md),
+See the [Implementation plan](docs/IMPLEMENTATION_PLAN.md),
+[Architecture](docs/ARCHITECTURE.md), [Product](docs/PRODUCT.md),
 [Security](docs/SECURITY.md), and [Roadmap](docs/ROADMAP.md).
 
 ## Requirements
@@ -152,4 +153,3 @@ target, and verified afterward.
 
 No licence has been selected yet. Until one is added, the project remains
 all-rights-reserved by default.
-
