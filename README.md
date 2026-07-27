@@ -1,6 +1,17 @@
-# Kitroom
+<p align="center">
+  <img src="Assets/Brand/kitroom-logo-readme.png" alt="Kitroom logo" width="180">
+</p>
 
-**Equip every coding agent, on every machine.**
+<h1 align="center">Kitroom</h1>
+
+<p align="center"><strong>Equip every coding agent, on every machine.</strong></p>
+
+<p align="center">
+  <a href="https://github.com/l0cka/kitroom/actions/workflows/ci.yml"><img src="https://github.com/l0cka/kitroom/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
+  <a href="https://www.swift.org/"><img src="https://img.shields.io/badge/Swift-6-F05138.svg?logo=swift&amp;logoColor=white" alt="Swift 6"></a>
+  <a href="https://developer.apple.com/macos/"><img src="https://img.shields.io/badge/macOS-14%2B-000000.svg?logo=apple&amp;logoColor=white" alt="macOS 14+"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-3DD6B3.svg" alt="MIT License"></a>
+</p>
 
 Kitroom is a native macOS application for browsing, inspecting, installing,
 updating, disabling, and uninstalling extensions used by coding agents. The
@@ -93,7 +104,8 @@ identical configuration formats.
 
 See the [Implementation plan](docs/IMPLEMENTATION_PLAN.md),
 [Architecture](docs/ARCHITECTURE.md), [Product](docs/PRODUCT.md),
-[Security](docs/SECURITY.md), and [Roadmap](docs/ROADMAP.md).
+[Security](docs/SECURITY.md), [Design guide](docs/DESIGN-GUIDE.md), and
+[Roadmap](docs/ROADMAP.md).
 
 ## Requirements
 
@@ -122,6 +134,9 @@ Run the complete local verification:
 ```text
 .
 ├── AGENTS.md
+├── Assets/
+│   └── Brand/                  # Logo and identity assets
+├── LICENSE
 ├── Package.swift
 ├── README.md
 ├── Sources/
@@ -135,6 +150,8 @@ Run the complete local verification:
 ├── docs/
 │   ├── decisions/             # Architecture decision records
 │   ├── ARCHITECTURE.md
+│   ├── DESIGN-GUIDE.md
+│   ├── IMPLEMENTATION_PLAN.md
 │   ├── PRODUCT.md
 │   ├── ROADMAP.md
 │   └── SECURITY.md
@@ -151,5 +168,4 @@ target, and verified afterward.
 
 ## License
 
-No licence has been selected yet. Until one is added, the project remains
-all-rights-reserved by default.
+Kitroom is available under the [MIT License](LICENSE).
