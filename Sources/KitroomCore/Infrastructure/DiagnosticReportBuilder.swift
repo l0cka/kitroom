@@ -5,7 +5,8 @@ public enum DiagnosticReportBuilder {
         generatedAt: Date,
         hosts: [ManagedHost],
         discoveries: [HostDiscoverySnapshot],
-        inventories: [InventorySnapshot]
+        inventories: [InventorySnapshot],
+        catalogues: [CatalogueSnapshot] = []
     ) throws -> Data {
         let report = DiagnosticReport(
             schemaVersion: 1,
@@ -58,6 +59,23 @@ public enum DiagnosticReportBuilder {
                         SensitiveValueRedactor.redact($0.summary)
                     }
                 )
+            },
+            catalogues: catalogues.map { snapshot in
+                DiagnosticCatalogue(
+                    hostID: snapshot.hostID,
+                    agent: snapshot.agent.rawValue,
+                    capturedAt: snapshot.capturedAt,
+                    status: snapshot.status.rawValue,
+                    packageCount: snapshot.packages.count,
+                    capabilityCount: snapshot.providedCapabilities.count,
+                    sourceCount: snapshot.sources.count,
+                    updateAvailableCount: snapshot.packageStates.filter {
+                        $0.updateStatus == .updateAvailable
+                    }.count,
+                    issueSummaries: snapshot.issues.map {
+                        SensitiveValueRedactor.redact($0.summary)
+                    }
+                )
             }
         )
 
@@ -74,6 +92,7 @@ private struct DiagnosticReport: Encodable {
     let hosts: [DiagnosticHost]
     let discoveries: [DiagnosticDiscovery]
     let inventories: [DiagnosticInventory]
+    let catalogues: [DiagnosticCatalogue]
 }
 
 private struct DiagnosticHost: Encodable {
@@ -116,4 +135,16 @@ private struct DiagnosticEvidence: Encodable {
     let probeName: String
     let parserVersion: String
     let status: String
+}
+
+private struct DiagnosticCatalogue: Encodable {
+    let hostID: UUID
+    let agent: String
+    let capturedAt: Date
+    let status: String
+    let packageCount: Int
+    let capabilityCount: Int
+    let sourceCount: Int
+    let updateAvailableCount: Int
+    let issueSummaries: [String]
 }

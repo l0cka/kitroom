@@ -15,7 +15,10 @@ public struct CodexAdapter: AgentAdapter {
         ]
     )
 
-    public let implementedCapabilities: AdapterCapabilities = [.inventory]
+    public let implementedCapabilities: AdapterCapabilities = [
+        .inventory,
+        .catalogue
+    ]
 
     private let clock: any KitroomClock
 
@@ -583,6 +586,181 @@ public struct CodexAdapter: AgentAdapter {
         )
     }
 
+    public func inspectCatalogue(
+        installed: InventorySnapshot?,
+        using session: any HostSession
+    ) async throws -> CatalogueSnapshot {
+        let capturedAt = clock.now
+        let environment = session.host.connection == .local
+            ? HostEnvironment.standard
+            : [:]
+        var evidence: [EvidenceRecord] = []
+        var issues: [InventoryIssue] = []
+
+        let executableProbe = await probe(
+            session: session,
+            executable: "/usr/bin/which",
+            arguments: ["codex"],
+            environment: environment,
+            name: "codex-catalogue-executable",
+            source: "which codex",
+            capturedAt: capturedAt
+        )
+        evidence.append(executableProbe.evidence)
+        guard let executable = successfulText(executableProbe) else {
+            if let issue = executableProbe.issue {
+                issues.append(issue)
+            }
+            return CatalogueSnapshot(
+                hostID: session.host.id,
+                agent: .codex,
+                capturedAt: capturedAt,
+                status: .unavailable,
+                capabilities: unsupportedReports(
+                    evidenceID: executableProbe.evidence.id
+                ),
+                evidence: evidence,
+                issues: issues
+            )
+        }
+
+        async let versionCapture = probe(
+            session: session,
+            executable: executable,
+            arguments: ["--version"],
+            environment: environment,
+            name: "codex-catalogue-version",
+            source: "codex --version",
+            capturedAt: capturedAt
+        )
+        async let helpCapture = probe(
+            session: session,
+            executable: executable,
+            arguments: ["plugin", "--help"],
+            environment: environment,
+            name: "codex-catalogue-capabilities",
+            source: "codex plugin --help",
+            capturedAt: capturedAt
+        )
+        async let availableCapture = probe(
+            session: session,
+            executable: executable,
+            arguments: ["plugin", "list", "--available", "--json"],
+            environment: environment,
+            name: "codex-native-catalogue",
+            source: "codex plugin list --available --json",
+            capturedAt: capturedAt
+        )
+        async let marketplaceCapture = probe(
+            session: session,
+            executable: executable,
+            arguments: ["plugin", "marketplace", "list", "--json"],
+            environment: environment,
+            name: "codex-catalogue-marketplaces",
+            source: "codex plugin marketplace list --json",
+            capturedAt: capturedAt
+        )
+
+        let versionProbe = await versionCapture
+        let helpProbe = await helpCapture
+        let availableProbe = await availableCapture
+        let marketplaceProbe = await marketplaceCapture
+        evidence.append(contentsOf: [
+            versionProbe.evidence,
+            helpProbe.evidence,
+            availableProbe.evidence,
+            marketplaceProbe.evidence
+        ])
+        if let issue = versionProbe.issue {
+            issues.append(issue)
+        }
+        if let issue = helpProbe.issue {
+            issues.append(issue)
+        }
+
+        var marketplaces: [CatalogSource] = []
+        if let data = successfulData(marketplaceProbe) {
+            marketplaces = parse(
+                name: "Codex catalogue marketplaces",
+                evidenceID: marketplaceProbe.evidence.id,
+                evidence: &evidence,
+                issues: &issues,
+                capturedAt: capturedAt
+            ) {
+                try CodexInventoryParser.parseMarketplaces(
+                    data,
+                    capturedAt: capturedAt,
+                    evidenceID: marketplaceProbe.evidence.id
+                )
+            } ?? []
+        } else if let issue = marketplaceProbe.issue {
+            issues.append(issue)
+        }
+
+        var parsed = ParsedCatalogue()
+        if let data = successfulData(availableProbe) {
+            parsed = parse(
+                name: "Codex native catalogue",
+                evidenceID: availableProbe.evidence.id,
+                evidence: &evidence,
+                issues: &issues,
+                capturedAt: capturedAt
+            ) {
+                try CodexInventoryParser.parseCatalogue(
+                    data,
+                    hostID: session.host.id,
+                    capturedAt: capturedAt,
+                    installedInventory: installed,
+                    marketplaces: marketplaces,
+                    evidenceID: availableProbe.evidence.id
+                )
+            } ?? ParsedCatalogue()
+        } else if let issue = availableProbe.issue {
+            issues.append(issue)
+        }
+
+        let components = await CatalogueComponentCollector.scan(
+            roots: parsed.componentRoots,
+            session: session,
+            agent: .codex,
+            capturedAt: capturedAt,
+            parserVersion: CodexInventoryParser.parserVersion,
+            environment: environment,
+            maximumConcurrentScans: session.host.connection.isRemote ? 4 : 8
+        )
+        evidence.append(contentsOf: components.evidence)
+        issues.append(contentsOf: components.issues)
+        let help = successfulText(helpProbe)?.lowercased()
+        let catalogueSupport: CapabilitySupport =
+            help?.contains("\n  list ") == true ? .supported : .unknown
+
+        return CatalogueSnapshot(
+            hostID: session.host.id,
+            agent: .codex,
+            capturedAt: capturedAt,
+            status: issues.isEmpty ? .complete : .partial,
+            agentVersion: successfulText(versionProbe),
+            capabilities: [
+                AdapterCapabilityReport(
+                    feature: .catalogueInventory,
+                    support: catalogueSupport,
+                    evidenceID: availableProbe.evidence.id
+                ),
+                AdapterCapabilityReport(
+                    feature: .updatePlugin,
+                    support: .unsupported,
+                    evidenceID: helpProbe.evidence.id
+                )
+            ],
+            sources: deduplicated(marketplaces + parsed.sources),
+            packages: deduplicated(parsed.packages),
+            providedCapabilities: deduplicated(components.capabilities),
+            packageStates: deduplicated(parsed.packageStates),
+            evidence: evidence,
+            issues: issues
+        )
+    }
+
     public func makePlan(
         kind: OperationKind,
         extensionID: String,
@@ -706,6 +884,11 @@ private extension CodexAdapter {
                 feature: .marketplaceInventory,
                 support: marketplaceInventory ? .supported : .unknown,
                 evidenceID: marketplaceEvidenceID
+            ),
+            AdapterCapabilityReport(
+                feature: .catalogueInventory,
+                support: .unknown,
+                evidenceID: helpEvidenceID
             ),
             AdapterCapabilityReport(
                 feature: .skillInventory,

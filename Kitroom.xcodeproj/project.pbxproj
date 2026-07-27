@@ -47,6 +47,10 @@
 		C00000000000000000000040 /* InventoryPresentation.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00000000000000000000040 /* InventoryPresentation.swift */; };
 		C00000000000000000000041 /* SwiftDataKitroomPersistence.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00000000000000000000041 /* SwiftDataKitroomPersistence.swift */; };
 		C00000000000000000000042 /* DiagnosticReportBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00000000000000000000042 /* DiagnosticReportBuilder.swift */; };
+		C00000000000000000000043 /* CatalogueProductView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00000000000000000000043 /* CatalogueProductView.swift */; };
+		C00000000000000000000044 /* CatalogueSnapshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00000000000000000000044 /* CatalogueSnapshot.swift */; };
+		C00000000000000000000045 /* HostComparison.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00000000000000000000045 /* HostComparison.swift */; };
+		C00000000000000000000046 /* CatalogueSupport.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00000000000000000000046 /* CatalogueSupport.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -114,6 +118,10 @@
 		B00000000000000000000040 /* InventoryPresentation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InventoryPresentation.swift; sourceTree = "<group>"; };
 		B00000000000000000000041 /* SwiftDataKitroomPersistence.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SwiftDataKitroomPersistence.swift; sourceTree = "<group>"; };
 		B00000000000000000000042 /* DiagnosticReportBuilder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DiagnosticReportBuilder.swift; sourceTree = "<group>"; };
+		B00000000000000000000043 /* CatalogueProductView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CatalogueProductView.swift; sourceTree = "<group>"; };
+		B00000000000000000000044 /* CatalogueSnapshot.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CatalogueSnapshot.swift; sourceTree = "<group>"; };
+		B00000000000000000000045 /* HostComparison.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HostComparison.swift; sourceTree = "<group>"; };
+		B00000000000000000000046 /* CatalogueSupport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CatalogueSupport.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -167,6 +175,7 @@
 				B00000000000000000000008 /* AppDependencies.swift */,
 				B00000000000000000000004 /* AppSection.swift */,
 				B00000000000000000000002 /* AppModel.swift */,
+				B00000000000000000000043 /* CatalogueProductView.swift */,
 				B00000000000000000000003 /* DashboardView.swift */,
 				B00000000000000000000039 /* InventoryProductView.swift */,
 				B00000000000000000000001 /* KitroomApp.swift */,
@@ -190,8 +199,10 @@
 			children = (
 				B00000000000000000000033 /* AdapterCapabilityReport.swift */,
 				B00000000000000000000010 /* AgentKind.swift */,
+				B00000000000000000000044 /* CatalogueSnapshot.swift */,
 				B00000000000000000000034 /* ExtensionInventory.swift */,
 				B00000000000000000000027 /* HostDiscovery.swift */,
+				B00000000000000000000045 /* HostComparison.swift */,
 				B00000000000000000000040 /* InventoryPresentation.swift */,
 				B00000000000000000000013 /* InventorySnapshot.swift */,
 				B00000000000000000000012 /* ManagedHost.swift */,
@@ -206,6 +217,7 @@
 			children = (
 				B00000000000000000000015 /* AgentAdapter.swift */,
 				B00000000000000000000021 /* AgentAdapterRegistry.swift */,
+				B00000000000000000000046 /* CatalogueSupport.swift */,
 				B00000000000000000000035 /* InventorySupport.swift */,
 				A00000000000000000000009 /* Claude */,
 				A0000000000000000000000A /* Codex */,
@@ -347,6 +359,7 @@
 				C00000000000000000000008 /* AppDependencies.swift in Sources */,
 				C00000000000000000000004 /* AppSection.swift in Sources */,
 				C00000000000000000000002 /* AppModel.swift in Sources */,
+				C00000000000000000000043 /* CatalogueProductView.swift in Sources */,
 				C00000000000000000000003 /* DashboardView.swift in Sources */,
 				C00000000000000000000039 /* InventoryProductView.swift in Sources */,
 				C00000000000000000000001 /* KitroomApp.swift in Sources */,
@@ -361,6 +374,8 @@
 				C00000000000000000000010 /* AgentKind.swift in Sources */,
 				C00000000000000000000015 /* AgentAdapter.swift in Sources */,
 				C00000000000000000000021 /* AgentAdapterRegistry.swift in Sources */,
+				C00000000000000000000046 /* CatalogueSupport.swift in Sources */,
+				C00000000000000000000044 /* CatalogueSnapshot.swift in Sources */,
 				C00000000000000000000016 /* ClaudeAdapter.swift in Sources */,
 				C00000000000000000000036 /* ClaudeInventoryParser.swift in Sources */,
 				C00000000000000000000037 /* ClaudeMCPConfigurationParser.swift in Sources */,
@@ -370,6 +385,7 @@
 				C00000000000000000000040 /* InventoryPresentation.swift in Sources */,
 				C00000000000000000000018 /* HostConnectionFactory.swift in Sources */,
 				C00000000000000000000027 /* HostDiscovery.swift in Sources */,
+				C00000000000000000000045 /* HostComparison.swift in Sources */,
 				C00000000000000000000028 /* HostDiscoveryService.swift in Sources */,
 				C00000000000000000000019 /* HostSession.swift in Sources */,
 				C00000000000000000000013 /* InventorySnapshot.swift in Sources */,

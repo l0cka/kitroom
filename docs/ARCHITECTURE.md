@@ -46,6 +46,8 @@ Contains immutable, `Sendable` values:
 - `InstallationRecord`
 - `EvidenceRecord`
 - `InventorySnapshot`
+- `CatalogueSnapshot`
+- `HostComparisonItem`
 - `OperationPlan`
 
 Unknown, partial, and unavailable states are first-class values.
@@ -113,6 +115,24 @@ Kitroom asks Git for the repository root, walks configuration and skill layers
 from that root to the selected directory, and passes every path as data to a
 structured host-session request.
 
+## Catalogues and comparison
+
+Catalogue scans use the same adapter and host-session boundaries as inventory.
+Each adapter reads its agent's available-package listing and configured
+marketplace metadata, then joins those results with installed state. The
+normalized snapshot keeps source identity, revisions, compatibility, integrity,
+declared components, evidence, and partial failures.
+
+Component inspection is bounded. Marketplace container roots are indexed once
+per scan where possible, and package paths are classified from that index.
+Missing optional roots do not create a false package failure. An unreadable or
+malformed source remains partial or unknown.
+
+Host comparison is a pure domain operation over current inventory snapshots. It
+reports package and standalone-capability differences for presence, version,
+enabled state, source, and digest. Missing evidence produces incomparable or
+unknown findings. Comparison never creates or applies an operation plan.
+
 ## Mutations
 
 Mutation is a state machine:
@@ -139,9 +159,9 @@ Kitroom uses a local SwiftData store, as recorded in
 
 The domain remains composed of immutable `Codable` values. SwiftData stores
 versioned encoded envelopes so persistence details do not leak into adapters or
-views. Host metadata has one current record. Discovery and inventory scans
-retain bounded history while current-state reads select the latest value for
-each host or host-and-agent grain.
+views. Host metadata has one current record. Discovery, inventory, and
+catalogue scans retain bounded history while current-state reads select the
+latest value for each host or host-and-agent grain.
 
 If the store cannot be initialized, the app falls back visibly to an in-memory
 store and warns that history is not being saved. It never presents an empty

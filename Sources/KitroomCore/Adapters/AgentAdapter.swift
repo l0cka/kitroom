@@ -8,10 +8,11 @@ public struct AdapterCapabilities: OptionSet, Sendable {
     }
 
     public static let inventory = Self(rawValue: 1 << 0)
-    public static let install = Self(rawValue: 1 << 1)
-    public static let update = Self(rawValue: 1 << 2)
-    public static let disable = Self(rawValue: 1 << 3)
-    public static let uninstall = Self(rawValue: 1 << 4)
+    public static let catalogue = Self(rawValue: 1 << 1)
+    public static let install = Self(rawValue: 1 << 2)
+    public static let update = Self(rawValue: 1 << 3)
+    public static let disable = Self(rawValue: 1 << 4)
+    public static let uninstall = Self(rawValue: 1 << 5)
 }
 
 public struct AgentDiscoveryProfile: Hashable, Sendable {
@@ -42,6 +43,10 @@ public protocol AgentAdapter: Sendable {
         context: InventoryContext,
         using session: any HostSession
     ) async throws -> InventorySnapshot
+    func inspectCatalogue(
+        installed: InventorySnapshot?,
+        using session: any HostSession
+    ) async throws -> CatalogueSnapshot
     func makePlan(
         kind: OperationKind,
         extensionID: String,

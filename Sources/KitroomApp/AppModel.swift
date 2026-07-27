@@ -12,6 +12,8 @@ final class AppModel: ObservableObject {
     @Published private(set) var resolvedHostByID: [ManagedHost.ID: String] = [:]
     @Published private(set) var inventoryByKey: [InventoryKey: InventorySnapshot] = [:]
     @Published private(set) var inventoryScanningHostIDs: Set<ManagedHost.ID> = []
+    @Published private(set) var catalogueByKey: [InventoryKey: CatalogueSnapshot] = [:]
+    @Published private(set) var catalogueScanningHostIDs: Set<ManagedHost.ID> = []
     @Published var projectDirectoryByHost: [ManagedHost.ID: String] = [:]
     @Published private(set) var persistenceWarning: String?
 
@@ -20,6 +22,7 @@ final class AppModel: ObservableObject {
     private var hasStarted = false
     private var scanTasks: [ManagedHost.ID: Task<Void, Never>] = [:]
     private var inventoryTasks: [ManagedHost.ID: Task<Void, Never>] = [:]
+    private var catalogueTasks: [ManagedHost.ID: Task<Void, Never>] = [:]
 
     init(
         hosts: [ManagedHost] = [ManagedHost(name: "This Mac", connection: .local)],
@@ -58,7 +61,15 @@ final class AppModel: ObservableObject {
         for host: ManagedHost,
         agent: AgentKind
     ) -> InventorySnapshot? {
-        inventoryByKey[InventoryKey(hostID: host.id, agent: agent)]
+        let key = InventoryKey(hostID: host.id, agent: agent)
+        return inventoryByKey[key]?.annotated(with: catalogueByKey[key])
+    }
+
+    func catalogue(
+        for host: ManagedHost,
+        agent: AgentKind
+    ) -> CatalogueSnapshot? {
+        catalogueByKey[InventoryKey(hostID: host.id, agent: agent)]
     }
 
     func projectDirectory(for host: ManagedHost) -> String {
@@ -98,6 +109,16 @@ final class AppModel: ObservableObject {
                 .loadInventorySnapshots()
             inventoryByKey = Dictionary(
                 uniqueKeysWithValues: persistedSnapshots.map {
+                    (
+                        InventoryKey(hostID: $0.hostID, agent: $0.agent),
+                        $0
+                    )
+                }
+            )
+            let persistedCatalogues = try await dependencies.persistence
+                .loadCatalogueSnapshots()
+            catalogueByKey = Dictionary(
+                uniqueKeysWithValues: persistedCatalogues.map {
                     (
                         InventoryKey(hostID: $0.hostID, agent: $0.agent),
                         $0
@@ -346,12 +367,103 @@ final class AppModel: ObservableObject {
         inventoryTasks[host.id]?.cancel()
     }
 
+    func scanCatalogue(_ host: ManagedHost) {
+        guard catalogueTasks[host.id] == nil else {
+            return
+        }
+        catalogueScanningHostIDs.insert(host.id)
+        catalogueTasks[host.id] = Task { [weak self] in
+            guard let self else {
+                return
+            }
+            defer {
+                catalogueScanningHostIDs.remove(host.id)
+                catalogueTasks[host.id] = nil
+            }
+
+            do {
+                let session = try await dependencies.hostConnectionFactory
+                    .connect(to: host)
+                for agent in dependencies.adapterRegistry.supportedAgents {
+                    guard !Task.isCancelled,
+                          let adapter = dependencies.adapterRegistry.adapter(
+                            for: agent
+                          )
+                    else {
+                        break
+                    }
+                    let key = InventoryKey(hostID: host.id, agent: agent)
+                    do {
+                        let snapshot = try await adapter.inspectCatalogue(
+                            installed: inventoryByKey[key],
+                            using: session
+                        )
+                        guard !Task.isCancelled else {
+                            break
+                        }
+                        catalogueByKey[key] = snapshot
+                        try await dependencies.persistence
+                            .saveCatalogueSnapshot(snapshot)
+                    } catch is CancellationError {
+                        break
+                    } catch {
+                        let snapshot = CatalogueSnapshot(
+                            hostID: host.id,
+                            agent: agent,
+                            capturedAt: dependencies.clock.now,
+                            status: .unavailable,
+                            evidence: [],
+                            issues: [
+                                InventoryIssue(
+                                    summary: "Catalogue refresh failed",
+                                    detail: SensitiveValueRedactor.redact(
+                                        error.localizedDescription
+                                    )
+                                )
+                            ]
+                        )
+                        catalogueByKey[key] = snapshot
+                        try? await dependencies.persistence
+                            .saveCatalogueSnapshot(snapshot)
+                    }
+                }
+            } catch is CancellationError {
+                // Cancellation preserves the last completed catalogue.
+            } catch {
+                persistenceWarning = SensitiveValueRedactor.redact(
+                    error.localizedDescription
+                )
+            }
+        }
+    }
+
+    func cancelCatalogueScan(_ host: ManagedHost) {
+        catalogueTasks[host.id]?.cancel()
+    }
+
+    func comparison(
+        leftHost: ManagedHost,
+        rightHost: ManagedHost
+    ) -> [HostComparisonItem] {
+        HostComparisonEngine.compare(
+            leftHostID: leftHost.id,
+            rightHostID: rightHost.id,
+            left: inventoryByKey.values.filter {
+                $0.hostID == leftHost.id
+            },
+            right: inventoryByKey.values.filter {
+                $0.hostID == rightHost.id
+            }
+        )
+    }
+
     func makeDiagnosticReport() throws -> Data {
         try DiagnosticReportBuilder.makeReport(
             generatedAt: dependencies.clock.now,
             hosts: hosts,
             discoveries: Array(discoveryByHost.values),
-            inventories: Array(inventoryByKey.values)
+            inventories: Array(inventoryByKey.values),
+            catalogues: Array(catalogueByKey.values)
         )
     }
 }

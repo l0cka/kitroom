@@ -34,6 +34,7 @@ public actor SwiftDataKitroomPersistence: KitroomPersistence {
         case hosts
         case hostDiscovery
         case inventory
+        case catalogue
     }
 
     private let container: ModelContainer
@@ -204,9 +205,58 @@ public actor SwiftDataKitroomPersistence: KitroomPersistence {
         try context.save()
     }
 
+    public func loadCatalogueSnapshots() throws -> [CatalogueSnapshot] {
+        latestCatalogueSnapshots(from: try allCatalogueSnapshots())
+    }
+
+    public func loadCatalogueHistory(
+        hostID: ManagedHost.ID? = nil,
+        agent: AgentKind? = nil,
+        limit: Int = 50
+    ) throws -> [CatalogueSnapshot] {
+        try allCatalogueSnapshots()
+            .filter { snapshot in
+                (hostID == nil || snapshot.hostID == hostID)
+                    && (agent == nil || snapshot.agent == agent)
+            }
+            .sorted { $0.capturedAt > $1.capturedAt }
+            .prefix(max(0, limit))
+            .map { $0 }
+    }
+
+    public func saveCatalogueSnapshot(_ snapshot: CatalogueSnapshot) throws {
+        let context = ModelContext(container)
+        let now = Date()
+        context.insert(
+            KitroomStoredRecord(
+                key: historyKey(
+                    prefix: RecordKind.catalogue.rawValue,
+                    hostID: snapshot.hostID,
+                    agent: snapshot.agent,
+                    timestamp: snapshot.capturedAt
+                ),
+                kind: RecordKind.catalogue.rawValue,
+                createdAt: now,
+                updatedAt: now,
+                payload: try encoder.encode(snapshot)
+            )
+        )
+        try trimCatalogueHistory(
+            in: context,
+            hostID: snapshot.hostID,
+            agent: snapshot.agent
+        )
+        try context.save()
+    }
+
     private func allInventorySnapshots() throws -> [InventorySnapshot] {
         try records(kind: .inventory)
             .map { try decode(InventorySnapshot.self, from: $0) }
+    }
+
+    private func allCatalogueSnapshots() throws -> [CatalogueSnapshot] {
+        try records(kind: .catalogue)
+            .map { try decode(CatalogueSnapshot.self, from: $0) }
     }
 
     private func records(
@@ -266,6 +316,30 @@ public actor SwiftDataKitroomPersistence: KitroomPersistence {
             .map { record -> (KitroomStoredRecord, InventorySnapshot) in
                 let snapshot = try decode(
                     InventorySnapshot.self,
+                    from: record
+                )
+                return (record, snapshot)
+            }
+            .filter {
+                $0.1.hostID == hostID && $0.1.agent == agent
+            }
+            .sorted { $0.1.capturedAt > $1.1.capturedAt }
+
+        for (record, _) in matching.dropFirst(historyLimitPerGrain) {
+            context.delete(record)
+        }
+    }
+
+    private func trimCatalogueHistory(
+        in context: ModelContext,
+        hostID: ManagedHost.ID,
+        agent: AgentKind
+    ) throws {
+        let matching = try fetchAll(in: context)
+            .filter { $0.kind == RecordKind.catalogue.rawValue }
+            .map { record -> (KitroomStoredRecord, CatalogueSnapshot) in
+                let snapshot = try decode(
+                    CatalogueSnapshot.self,
                     from: record
                 )
                 return (record, snapshot)

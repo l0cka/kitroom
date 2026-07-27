@@ -1,0 +1,52 @@
+{
+  "installed": [
+    {
+      "id": "formatter@team",
+      "version": "1.0.0",
+      "scope": "user",
+      "enabled": true
+    },
+    {
+      "id": "legacy@old",
+      "version": "legacy-r1",
+      "scope": "user",
+      "enabled": false
+    }
+  ],
+  "available": [
+    {
+      "pluginId": "formatter@team",
+      "name": "formatter",
+      "description": "Formats fixture source files.",
+      "publisher": "Fixture Tools",
+      "marketplaceName": "team",
+      "version": "2.0.0",
+      "source": {
+        "source": "git-subdir",
+        "url": "https://example.invalid/team/plugins",
+        "path": "plugins/formatter",
+        "ref": "v2.0.0",
+        "sha": "formatter-digest"
+      }
+    },
+    {
+      "pluginId": "review@team",
+      "name": "review",
+      "description": "A package without publisher or revision metadata.",
+      "marketplaceName": "team",
+      "version": "1.0.0",
+      "source": "./plugins/review"
+    },
+    {
+      "pluginId": "same-name@alternate",
+      "name": "review",
+      "marketplaceName": "alternate",
+      "version": "1.0.0",
+      "source": {
+        "source": "git",
+        "url": "https://example.invalid/alternate/plugins",
+        "sha": "alternate-digest"
+      }
+    }
+  ]
+}

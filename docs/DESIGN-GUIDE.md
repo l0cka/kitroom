@@ -251,6 +251,23 @@ and issues. Counts must be derived from one snapshot.
 Use a package/capability hierarchy rather than a flat icon grid. Essential
 columns are name, kind, agent, scope, origin, state, version, and freshness.
 
+### Catalogue browser
+
+Keep catalogue refresh separate from package update. The screen must say that a
+refresh reads metadata and changes no installed state. Show source, installed
+and available versions, update support, compatibility, integrity, provided
+components, evidence, and freshness without adding an install affordance until
+the guarded mutation flow exists.
+
+### Host comparison
+
+Label both hosts and transports throughout the comparison. Findings distinguish
+host-only items, version or enabled-state differences, source or digest
+mismatches, matching state, and results that cannot be compared. Matching
+packages may be hidden for focus, but unknown or incomparable findings must
+remain visible. Comparison does not imply that one host is the desired source
+of truth.
+
 ### Status badge
 
 Use short noun or adjective labels such as **Verified**, **Partial**,

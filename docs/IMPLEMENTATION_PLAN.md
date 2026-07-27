@@ -46,15 +46,16 @@ inspect → plan → review → approve → apply → verify → record
 
 ## Current baseline
 
-The scaffold already provides:
+The application now provides:
 
-- SwiftUI application and `KitroomCore` package targets;
-- host, agent, extension, inventory, and operation-plan types;
-- Claude and Codex adapter boundaries;
-- local/SSH session contracts;
-- a plan approval digest;
-- five passing domain and safety tests;
-- product, architecture, security, roadmap, and agent guidance.
+- a native SwiftUI application and platform-neutral `KitroomCore` target;
+- bounded local and OpenSSH host sessions;
+- read-only Claude Code and Codex host discovery and inventory;
+- durable host, inventory, and catalogue history;
+- agent-native catalogue browsing and installed-state comparison;
+- immutable operation-plan and approval-digest foundations;
+- fixture-based domain, parser, persistence, transport, and safety tests;
+- product, architecture, security, roadmap, and repository guidance.
 
 The initial adapter plan uses this CLI capability snapshot, captured on
 2026-07-27:
@@ -463,7 +464,7 @@ normalization through fake host sessions.
 
 ## M4: Inventory product and persistence
 
-**Status:** In progress
+**Status:** Complete
 
 ### Objective
 
@@ -511,7 +512,7 @@ Turn normalized inventory into the first useful end-to-end product.
   and whether the evidence is current on both hosts.
 - No mutating controls are enabled yet.
 
-### Delivered so far
+### Delivered
 
 - Chose SwiftData in ADR 0003 after exercising the normalized local and remote
   inventory model.
@@ -533,10 +534,19 @@ Turn normalized inventory into the first useful end-to-end product.
 Automated coverage includes empty-store bootstrap and reopen, latest-state
 replacement with historical retention, freshness transitions, combined search
 and filter matching, stable accessibility descriptions, and diagnostic
-redaction. Native visual and restart checks remain before this milestone can be
-marked complete.
+redaction.
+
+### Gate evidence
+
+On 2026-07-27, native visual and restart checks confirmed that host metadata,
+discovery results, and current inventory survive relaunch. The Hosts and
+Inventory screens rendered local and OpenSSH targets distinctly, preserved
+partial scan issues, exposed freshness and evidence, and offered no mutating
+controls.
 
 ## M5: Native catalogues, updates, and comparison
+
+**Status:** Complete
 
 ### Objective
 
@@ -588,6 +598,36 @@ changes.
   remote host.
 - The UI never represents marketplace refresh as installed-package update.
 - No reconciliation occurs automatically.
+
+### Delivered
+
+- Added immutable catalogue snapshots for sources, packages, provided
+  capabilities, installed and available revisions, update state, compatibility,
+  integrity, evidence, and issues.
+- Added agent-native Codex and Claude collectors that join installed packages
+  with available listings and configured marketplace metadata.
+- Added bounded component inspection for skills, MCP servers, hooks,
+  executables, and other declared package content.
+- Added durable, bounded catalogue history and annotated inventory update state.
+- Added a native Catalogue screen with host and agent filters, search, source
+  metadata, package details, component summaries, evidence, and stale-state
+  warnings.
+- Added read-only host comparison for packages and standalone capabilities,
+  including presence, version, enabled state, source, digest, incomparable, and
+  unknown findings.
+- Kept update support capability-driven. Claude reports direct update support
+  when the host exposes it; Codex does not treat marketplace refresh as a
+  package update.
+
+### Gate evidence
+
+On 2026-07-27, native read-only scans rendered Codex and Claude catalogue data
+from both a local machine and an OpenSSH host. The comparison view explained
+host-only packages and state differences without offering reconciliation.
+Automated coverage includes installed/available joins, missing metadata, update
+annotation, stale catalogues, source/version/digest comparison, incomparable
+state, unsupported update paths, component discovery, and catalogue
+persistence.
 
 ## M6: Guarded local mutations
 

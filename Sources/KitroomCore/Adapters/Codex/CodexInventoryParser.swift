@@ -103,6 +103,132 @@ enum CodexInventoryParser {
         }
     }
 
+    static func parseCatalogue(
+        _ data: Data,
+        hostID: ManagedHost.ID,
+        capturedAt: Date,
+        installedInventory: InventorySnapshot?,
+        marketplaces: [CatalogSource] = [],
+        evidenceID: EvidenceRecord.ID? = nil
+    ) throws -> ParsedCatalogue {
+        let envelope = try JSONDecoder().decode(PluginEnvelope.self, from: data)
+        var result = ParsedCatalogue()
+        var seenSources = Set<String>()
+        let installedByID = Dictionary(
+            uniqueKeysWithValues: envelope.installed.map {
+                ($0.pluginID, $0)
+            }
+        )
+        let availableIDs = Set(envelope.available.map(\.pluginID))
+        let cataloguePlugins = envelope.available + envelope.installed.filter {
+            !availableIDs.contains($0.pluginID)
+        }
+
+        for plugin in cataloguePlugins {
+            let marketplaceName = plugin.marketplaceName ?? "unknown"
+            let sourceID = "codex:marketplace:\(marketplaceName)"
+            if seenSources.insert(sourceID).inserted {
+                let known = marketplaces.first { $0.id == sourceID }
+                result.sources.append(
+                    known ?? CatalogSource(
+                        id: sourceID,
+                        agent: .codex,
+                        name: marketplaceName,
+                        kind: sourceKind(plugin),
+                        reference: sourceReference(plugin),
+                        localRoot: plugin.marketplaceSource?.path,
+                        revision: plugin.marketplaceSource?.revision,
+                        capturedAt: capturedAt,
+                        evidenceIDs: evidenceID.map { [$0] } ?? []
+                    )
+                )
+            }
+
+            let packageID = "codex:plugin:\(plugin.pluginID)"
+            let installedVersion = CatalogueVersionJoin.installedVersion(
+                packageID: packageID,
+                inventory: installedInventory,
+                fallback: installedByID[plugin.pluginID]?.version
+            )
+            let availableVersion = availableIDs.contains(plugin.pluginID)
+                ? plugin.version
+                : nil
+            let digest = plugin.source?.sha
+                ?? plugin.marketplaceSource?.sha
+            result.packages.append(
+                PackageRecord(
+                    id: packageID,
+                    agent: .codex,
+                    name: plugin.name,
+                    sourceID: sourceID,
+                    publisher: plugin.publisher,
+                    description: plugin.description,
+                    repository: repositoryReference(plugin),
+                    version: plugin.version,
+                    revision: plugin.source?.revision
+                        ?? plugin.marketplaceSource?.revision,
+                    manifestDigest: digest,
+                    evidenceIDs: evidenceID.map { [$0] } ?? []
+                )
+            )
+            result.packageStates.append(
+                CataloguePackageState(
+                    id: InventoryIdentifier.make(
+                        hostID.uuidString,
+                        packageID,
+                        "catalogue"
+                    ),
+                    hostID: hostID,
+                    agent: .codex,
+                    packageID: packageID,
+                    installedVersion: installedVersion,
+                    availableVersion: availableVersion,
+                    updateStatus: CatalogueVersionJoin.status(
+                        installedVersion: installedVersion,
+                        availableVersion: availableVersion
+                    ),
+                    restriction: restriction(plugin.installPolicy),
+                    compatibility: plugin.installPolicy?.uppercased() == "BLOCKED"
+                        ? .incompatible
+                        : .unknown,
+                    integrity: digest == nil ? .unverified : .digestDeclared,
+                    evidenceIDs: evidenceID.map { [$0] } ?? []
+                )
+            )
+            if let root = plugin.source?.path, root.hasPrefix("/") {
+                let knownRoot = marketplaces.first {
+                    $0.id == sourceID
+                }?.localRoot
+                let embeddedRoot = [
+                    plugin.marketplaceSource?.path,
+                    plugin.marketplaceSource?.source
+                ]
+                .compactMap { $0 }
+                .first { $0.hasPrefix("/") }
+                let container = knownRoot ?? embeddedRoot
+                result.componentRoots.append(
+                    CatalogueComponentRoot(
+                        packageID: packageID,
+                        path: root,
+                        containerPath: container.flatMap { container in
+                            let prefix = container.hasSuffix("/")
+                                ? container
+                                : container + "/"
+                            guard root == container
+                                    || root.hasPrefix(prefix)
+                            else {
+                                return nil
+                            }
+                            return container
+                        }
+                    )
+                )
+            }
+        }
+
+        return result
+    }
+
     static func parseMCPServers(
         _ data: Data,
         hostID: ManagedHost.ID,
@@ -290,6 +416,24 @@ enum CodexInventoryParser {
         }
     }
 
+    private static func sourceReference(_ plugin: Plugin) -> String? {
+        plugin.marketplaceSource?.url
+            ?? plugin.marketplaceSource?.source
+            ?? plugin.source?.url
+            ?? plugin.source?.source
+    }
+
+    private static func repositoryReference(_ plugin: Plugin) -> String? {
+        [
+            plugin.source?.url,
+            plugin.source?.source,
+            plugin.marketplaceSource?.url,
+            plugin.marketplaceSource?.source
+        ]
+        .compactMap { $0 }
+        .first { $0.hasPrefix("https://") || $0.hasPrefix("git@") }
+    }
+
     private static func restriction(_ installPolicy: String?) -> ManagementRestriction {
         switch installPolicy?.uppercased() {
         case "REQUIRED", "MANAGED":
@@ -307,12 +451,32 @@ enum CodexInventoryParser {
 private extension CodexInventoryParser {
     struct PluginEnvelope: Decodable {
         let installed: [Plugin]
+        let available: [Plugin]
+
+        enum CodingKeys: String, CodingKey {
+            case installed
+            case available
+        }
+
+        init(from decoder: Decoder) throws {
+            let container = try decoder.container(keyedBy: CodingKeys.self)
+            installed = try container.decodeIfPresent(
+                [Plugin].self,
+                forKey: .installed
+            ) ?? []
+            available = try container.decodeIfPresent(
+                [Plugin].self,
+                forKey: .available
+            ) ?? []
+        }
     }
 
     struct Plugin: Decodable {
         let pluginID: String
         let name: String
         let marketplaceName: String?
+        let description: String?
+        let publisher: String?
         let version: String?
         let installed: Bool?
         let enabled: Bool?
@@ -324,6 +488,8 @@ private extension CodexInventoryParser {
             case pluginID = "pluginId"
             case name
             case marketplaceName
+            case description
+            case publisher
             case version
             case installed
             case enabled
@@ -348,6 +514,7 @@ private extension CodexInventoryParser {
         let path: String?
         let sourceType: String?
         let revision: String?
+        let ref: String?
         let sha: String?
         let url: String?
     }

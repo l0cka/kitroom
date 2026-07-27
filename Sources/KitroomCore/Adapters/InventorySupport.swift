@@ -595,7 +595,10 @@ enum SkillInventoryScanner {
         )
         inventory.evidence.append(listing.evidence)
 
-        guard let result = listing.result, result.succeeded else {
+        guard let result = listing.result,
+              result.succeeded,
+              listing.evidence.status == .success
+        else {
             if let issue = listing.issue {
                 inventory.issues.append(issue)
             }
@@ -745,7 +748,10 @@ enum LegacyCommandInventoryScanner {
             capturedAt: capturedAt
         )
         inventory.evidence.append(listing.evidence)
-        guard let result = listing.result, result.succeeded else {
+        guard let result = listing.result,
+              result.succeeded,
+              listing.evidence.status == .success
+        else {
             if let issue = listing.issue {
                 inventory.issues.append(issue)
             }
@@ -972,12 +978,41 @@ enum PluginComponentScanner {
             return inventory
         }
 
-        let rootPrefix = root.hasSuffix("/") ? root : root + "/"
         let paths = result.standardOutput
             .split(separator: "\0")
             .map(String.init)
             .sorted()
+        let parsed = await scanKnownFiles(
+            session: session,
+            agent: agent,
+            packageID: packageID,
+            root: root,
+            paths: paths,
+            listingEvidenceID: listing.evidence.id,
+            capturedAt: capturedAt,
+            parserVersion: parserVersion,
+            environment: environment
+        )
+        inventory.capabilities.append(contentsOf: parsed.capabilities)
+        inventory.evidence.append(contentsOf: parsed.evidence)
+        inventory.issues.append(contentsOf: parsed.issues)
+        return inventory
+    }
+
+    static func scanKnownFiles(
+        session: any HostSession,
+        agent: AgentKind,
+        packageID: String,
+        root: String,
+        paths: [String],
+        listingEvidenceID: EvidenceRecord.ID,
+        capturedAt: Date,
+        parserVersion: String,
+        environment: [String: String]
+    ) async -> PluginComponentScanResult {
+        var inventory = PluginComponentScanResult()
         var seen = Set<String>()
+        let rootPrefix = root.hasSuffix("/") ? root : root + "/"
 
         for path in paths {
             guard !Task.isCancelled else {
@@ -1069,7 +1104,7 @@ enum PluginComponentScanner {
                 packageID: packageID,
                 seen: &seen,
                 capabilities: &inventory.capabilities,
-                evidenceIDs: [listing.evidence.id]
+                evidenceIDs: [listingEvidenceID]
             )
         }
 

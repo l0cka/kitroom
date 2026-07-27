@@ -27,6 +27,10 @@ output, and command arguments as untrusted input.
   and allowed environment value.
 - No recursive deletion based on an unresolved path.
 - No claim of success before post-change inspection.
+- Catalogue refresh and host comparison are read-only. They never trigger
+  install, update, enable, disable, or removal commands.
+- Catalogue metadata does not become trusted because two hosts report the same
+  package name or version.
 
 ## Installation provenance
 
@@ -42,6 +46,11 @@ Before installation, Kitroom should record:
 - review time and reviewer for curated sources.
 
 A catalogue listing is not a trust decision.
+
+The current catalogue product reports declared or observed integrity evidence.
+It does not claim signature verification when the source has not supplied and
+verified a digest. Host comparison is advisory and never reconciles state
+automatically.
 
 ## Plan approval
 

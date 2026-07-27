@@ -1,0 +1,75 @@
+{
+  "installed": [
+    {
+      "pluginId": "tools@team",
+      "name": "tools",
+      "marketplaceName": "team",
+      "version": "1.0.0",
+      "installed": true,
+      "enabled": true,
+      "source": {
+        "source": "https://example.invalid/team/plugins",
+        "sha": "installed-digest"
+      },
+      "marketplaceSource": {
+        "sourceType": "git",
+        "source": "https://example.invalid/team/plugins",
+        "revision": "catalogue-r2"
+      },
+      "installPolicy": "AVAILABLE"
+    },
+    {
+      "pluginId": "managed@policy",
+      "name": "managed",
+      "marketplaceName": "policy",
+      "version": "policy-r1",
+      "installed": true,
+      "enabled": true,
+      "marketplaceSource": {
+        "sourceType": "git",
+        "source": "https://example.invalid/policy/plugins"
+      },
+      "installPolicy": "MANAGED"
+    }
+  ],
+  "available": [
+    {
+      "pluginId": "tools@team",
+      "name": "tools",
+      "description": "A fixture package with several coding-agent tools.",
+      "publisher": "Fixture Tools",
+      "marketplaceName": "team",
+      "version": "2.0.0",
+      "installed": true,
+      "enabled": true,
+      "source": {
+        "source": "https://example.invalid/team/plugins",
+        "ref": "v2.0.0",
+        "sha": "available-digest"
+      },
+      "marketplaceSource": {
+        "sourceType": "git",
+        "source": "https://example.invalid/team/plugins",
+        "revision": "catalogue-r2"
+      },
+      "installPolicy": "AVAILABLE"
+    },
+    {
+      "pluginId": "new@team",
+      "name": "new",
+      "description": "An available but uninstalled fixture package.",
+      "marketplaceName": "team",
+      "version": "3.0.0",
+      "installed": false,
+      "source": {
+        "source": "https://example.invalid/team/plugins",
+        "path": "/fixtures/codex/marketplaces/team/plugins/new"
+      },
+      "marketplaceSource": {
+        "sourceType": "git",
+        "source": "https://example.invalid/team/plugins"
+      },
+      "installPolicy": "BLOCKED"
+    }
+  ]
+}

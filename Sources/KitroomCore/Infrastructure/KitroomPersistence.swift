@@ -14,21 +14,31 @@ public protocol KitroomPersistence: Sendable {
         limit: Int
     ) async throws -> [InventorySnapshot]
     func saveInventorySnapshot(_ snapshot: InventorySnapshot) async throws
+    func loadCatalogueSnapshots() async throws -> [CatalogueSnapshot]
+    func loadCatalogueHistory(
+        hostID: ManagedHost.ID?,
+        agent: AgentKind?,
+        limit: Int
+    ) async throws -> [CatalogueSnapshot]
+    func saveCatalogueSnapshot(_ snapshot: CatalogueSnapshot) async throws
 }
 
 public actor InMemoryKitroomPersistence: KitroomPersistence {
     private var hosts: [ManagedHost]
     private var discoverySnapshots: [HostDiscoverySnapshot]
     private var inventorySnapshots: [InventorySnapshot]
+    private var catalogueSnapshots: [CatalogueSnapshot]
 
     public init(
         hosts: [ManagedHost] = [],
         discoverySnapshots: [HostDiscoverySnapshot] = [],
-        snapshots: [InventorySnapshot] = []
+        snapshots: [InventorySnapshot] = [],
+        catalogueSnapshots: [CatalogueSnapshot] = []
     ) {
         self.hosts = hosts
         self.discoverySnapshots = discoverySnapshots
         self.inventorySnapshots = snapshots
+        self.catalogueSnapshots = catalogueSnapshots
     }
 
     public func loadHosts() -> [ManagedHost] {
@@ -80,6 +90,29 @@ public actor InMemoryKitroomPersistence: KitroomPersistence {
     public func saveInventorySnapshot(_ snapshot: InventorySnapshot) {
         inventorySnapshots.append(snapshot)
     }
+
+    public func loadCatalogueSnapshots() -> [CatalogueSnapshot] {
+        latestCatalogueSnapshots(from: catalogueSnapshots)
+    }
+
+    public func loadCatalogueHistory(
+        hostID: ManagedHost.ID? = nil,
+        agent: AgentKind? = nil,
+        limit: Int = 50
+    ) -> [CatalogueSnapshot] {
+        catalogueSnapshots
+            .filter { snapshot in
+                (hostID == nil || snapshot.hostID == hostID)
+                    && (agent == nil || snapshot.agent == agent)
+            }
+            .sorted { $0.capturedAt > $1.capturedAt }
+            .prefix(max(0, limit))
+            .map { $0 }
+    }
+
+    public func saveCatalogueSnapshot(_ snapshot: CatalogueSnapshot) {
+        catalogueSnapshots.append(snapshot)
+    }
 }
 
 func latestDiscoverySnapshots(
@@ -95,6 +128,23 @@ func latestDiscoverySnapshots(
 func latestInventorySnapshots(
     from snapshots: [InventorySnapshot]
 ) -> [InventorySnapshot] {
+    Dictionary(grouping: snapshots) {
+        InventoryPersistenceKey(hostID: $0.hostID, agent: $0.agent)
+    }
+    .compactMap { _, values in
+        values.max { $0.capturedAt < $1.capturedAt }
+    }
+    .sorted { lhs, rhs in
+        if lhs.hostID == rhs.hostID {
+            return lhs.agent.rawValue < rhs.agent.rawValue
+        }
+        return lhs.hostID.uuidString < rhs.hostID.uuidString
+    }
+}
+
+func latestCatalogueSnapshots(
+    from snapshots: [CatalogueSnapshot]
+) -> [CatalogueSnapshot] {
     Dictionary(grouping: snapshots) {
         InventoryPersistenceKey(hostID: $0.hostID, agent: $0.agent)
     }

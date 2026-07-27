@@ -62,6 +62,7 @@ public struct PackageRecord: Identifiable, Codable, Hashable, Sendable {
     public let sourceID: CatalogSource.ID?
     public let publisher: String?
     public let description: String?
+    public let repository: String?
     public let version: String?
     public let revision: String?
     public let manifestDigest: String?
@@ -75,6 +76,7 @@ public struct PackageRecord: Identifiable, Codable, Hashable, Sendable {
         sourceID: CatalogSource.ID? = nil,
         publisher: String? = nil,
         description: String? = nil,
+        repository: String? = nil,
         version: String? = nil,
         revision: String? = nil,
         manifestDigest: String? = nil,
@@ -87,6 +89,7 @@ public struct PackageRecord: Identifiable, Codable, Hashable, Sendable {
         self.sourceID = sourceID
         self.publisher = publisher
         self.description = description
+        self.repository = repository
         self.version = version
         self.revision = revision
         self.manifestDigest = manifestDigest

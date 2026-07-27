@@ -20,6 +20,7 @@ public enum InventoryFreshness: String, Codable, Hashable, Sendable {
 }
 
 public enum UpdateStatus: String, Codable, CaseIterable, Hashable, Sendable {
+    case notInstalled
     case upToDate
     case updateAvailable
     case unknown

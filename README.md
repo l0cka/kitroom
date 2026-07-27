@@ -36,6 +36,10 @@ Kitroom is in active early development. The repository currently contains:
 - OpenSSH-alias setup that preserves the user's keys and host trust;
 - read-only Codex and Claude inventories for plugins, skills, MCP servers,
   configuration state, and plugin-provided components;
+- read-only native catalogue browsing with source, version, component,
+  compatibility, integrity, and update evidence;
+- host comparison for package versions, enabled state, source, digest, and
+  host-only capabilities;
 - optional project-aware scanning from a selected working directory to its Git
   root;
 - per-item scope, origin, effective state, freshness, and evidence status;
@@ -45,10 +49,11 @@ Kitroom is in active early development. The repository currently contains:
 - an approval-first operation model;
 - unit tests and project documentation.
 
-The Hosts screen verifies platform details and agent availability. The
-Inventory screen runs fresh read-only scans, preserves recent history, and
-labels unverified, stale, or incomplete state explicitly. Catalogue comparison
-and mutating operations are not implemented yet.
+The Hosts screen verifies platform details and agent availability. Inventory
+and Catalogue run fresh read-only scans, preserve recent history, and label
+unverified, stale, or incomplete state explicitly. Catalogue can compare
+installed state between two hosts without changing either one. Install, update,
+enable, disable, and uninstall operations are not implemented yet.
 
 ## Product principles
 

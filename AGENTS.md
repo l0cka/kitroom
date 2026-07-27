@@ -13,11 +13,11 @@ host after an operation. A successful command exit is not sufficient evidence.
 ## Current status
 
 This repository implements bounded, read-only host discovery, normalized Claude
-Code and Codex inventory, and durable local scan history for the local Mac and
-user-selected OpenSSH aliases. It does not yet browse available catalogues,
-compare hosts, or execute mutations. Keep documentation and UI honest about
-what is implemented. Use **Not checked**, **Unknown**, **Stale**, **Partial**,
-or **Not implemented** when live state has not been established.
+Code and Codex inventory, native catalogue browsing, host comparison, and
+durable local scan history for the local Mac and user-selected OpenSSH aliases.
+It does not yet execute mutations. Keep documentation and UI honest about what
+is implemented. Use **Not checked**, **Unknown**, **Stale**, **Partial**, or
+**Not implemented** when live state has not been established.
 
 ## Technology
 
@@ -50,6 +50,7 @@ Sources/KitroomApp/
   AppSection.swift       # Primary navigation destinations
   DashboardView.swift    # Current presentation shell
   InventoryProductView.swift # Inventory filters, evidence, and export
+  CatalogueProductView.swift # Native catalogues and host comparison
   Resources/             # App icon, logo, and color assets
 
 Sources/KitroomCore/

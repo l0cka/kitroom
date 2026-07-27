@@ -62,6 +62,39 @@ final class PersistenceProductTests: XCTestCase {
         XCTAssertEqual(history, [replacement, first])
     }
 
+    func testPersistenceLoadsLatestCatalogueAndRetainsHistory() async throws {
+        let directory = temporaryDirectory()
+        let store = try SwiftDataKitroomPersistence(
+            storeURL: directory.appendingPathComponent("Kitroom.store")
+        )
+        let hostID = UUID()
+        let first = CatalogueSnapshot(
+            hostID: hostID,
+            agent: .claude,
+            capturedAt: Date(timeIntervalSince1970: 100),
+            status: .partial
+        )
+        let replacement = CatalogueSnapshot(
+            hostID: hostID,
+            agent: .claude,
+            capturedAt: Date(timeIntervalSince1970: 200),
+            status: .complete
+        )
+
+        try await store.saveCatalogueSnapshot(first)
+        try await store.saveCatalogueSnapshot(replacement)
+
+        let current = try await store.loadCatalogueSnapshots()
+        let history = try await store.loadCatalogueHistory(
+            hostID: hostID,
+            agent: .claude,
+            limit: 10
+        )
+
+        XCTAssertEqual(current, [replacement])
+        XCTAssertEqual(history, [replacement, first])
+    }
+
     func testFreshnessTransitionsAreExplicit() {
         let now = Date(timeIntervalSince1970: 10_000)
 

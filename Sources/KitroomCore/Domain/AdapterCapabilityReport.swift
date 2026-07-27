@@ -1,6 +1,7 @@
 public enum AdapterFeature: String, CaseIterable, Codable, Hashable, Sendable {
     case pluginInventory
     case marketplaceInventory
+    case catalogueInventory
     case skillInventory
     case mcpInventory
     case pluginDetails

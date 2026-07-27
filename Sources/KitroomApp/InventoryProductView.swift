@@ -1075,6 +1075,8 @@ private extension CapabilityKind {
 private extension UpdateStatus {
     var displayName: String {
         switch self {
+        case .notInstalled:
+            "Not installed"
         case .upToDate:
             "Up to date"
         case .updateAvailable:

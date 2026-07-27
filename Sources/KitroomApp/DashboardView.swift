@@ -54,11 +54,7 @@ struct DashboardView: View {
         case .inventory:
             InventoryProductView()
         case .catalogue:
-            FeaturePlaceholder(
-                title: "Catalogue",
-                systemImage: "books.vertical",
-                message: "Catalogue browsing is not implemented yet. Sources and provenance will appear here before installation is enabled."
-            )
+            CatalogueProductView()
         case .activity:
             FeaturePlaceholder(
                 title: "Activity",

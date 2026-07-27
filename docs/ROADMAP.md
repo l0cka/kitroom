@@ -52,11 +52,11 @@ remote host without changing either one.
 
 ## Phase 3: Catalogue and comparison
 
-- [ ] Define normalized catalogue records
-- [ ] Add first curated source
-- [ ] Show provenance, revision, compatibility, and update availability
-- [ ] Compare inventories across hosts
-- [ ] Explain differences without automatically synchronising them
+- [x] Define normalized catalogue records
+- [x] Read native catalogue sources exposed by each agent
+- [x] Show provenance, revision, compatibility, and update availability
+- [x] Compare inventories across hosts
+- [x] Explain differences without automatically synchronising them
 
 Exit criterion: a user can identify what differs, why, and what source would be
 used to reconcile it.
