@@ -14,6 +14,7 @@
 		C00000000000000000000005 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = B00000000000000000000005 /* Assets.xcassets */; };
 		C00000000000000000000006 /* KitroomCore.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = B00000000000000000000007 /* KitroomCore.framework */; };
 		C00000000000000000000007 /* KitroomCore.framework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = B00000000000000000000007 /* KitroomCore.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
+		C00000000000000000000008 /* AppDependencies.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00000000000000000000008 /* AppDependencies.swift */; };
 		C00000000000000000000010 /* AgentKind.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00000000000000000000010 /* AgentKind.swift */; };
 		C00000000000000000000011 /* ManagedExtension.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00000000000000000000011 /* ManagedExtension.swift */; };
 		C00000000000000000000012 /* ManagedHost.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00000000000000000000012 /* ManagedHost.swift */; };
@@ -24,6 +25,13 @@
 		C00000000000000000000017 /* CodexAdapter.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00000000000000000000017 /* CodexAdapter.swift */; };
 		C00000000000000000000018 /* HostConnectionFactory.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00000000000000000000018 /* HostConnectionFactory.swift */; };
 		C00000000000000000000019 /* HostSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00000000000000000000019 /* HostSession.swift */; };
+		C00000000000000000000020 /* OperationApproval.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00000000000000000000020 /* OperationApproval.swift */; };
+		C00000000000000000000021 /* AgentAdapterRegistry.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00000000000000000000021 /* AgentAdapterRegistry.swift */; };
+		C00000000000000000000022 /* KitroomClock.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00000000000000000000022 /* KitroomClock.swift */; };
+		C00000000000000000000023 /* KitroomPersistence.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00000000000000000000023 /* KitroomPersistence.swift */; };
+		C00000000000000000000024 /* KitroomLogging.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00000000000000000000024 /* KitroomLogging.swift */; };
+		C00000000000000000000025 /* OperationApprovalStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00000000000000000000025 /* OperationApprovalStore.swift */; };
+		C00000000000000000000026 /* ProcessExecutor.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00000000000000000000026 /* ProcessExecutor.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -58,6 +66,7 @@
 		B00000000000000000000005 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Resources/Assets.xcassets; sourceTree = "<group>"; };
 		B00000000000000000000006 /* Kitroom.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Kitroom.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		B00000000000000000000007 /* KitroomCore.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = KitroomCore.framework; sourceTree = BUILT_PRODUCTS_DIR; };
+		B00000000000000000000008 /* AppDependencies.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDependencies.swift; sourceTree = "<group>"; };
 		B00000000000000000000010 /* AgentKind.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AgentKind.swift; sourceTree = "<group>"; };
 		B00000000000000000000011 /* ManagedExtension.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ManagedExtension.swift; sourceTree = "<group>"; };
 		B00000000000000000000012 /* ManagedHost.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ManagedHost.swift; sourceTree = "<group>"; };
@@ -68,6 +77,13 @@
 		B00000000000000000000017 /* CodexAdapter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CodexAdapter.swift; sourceTree = "<group>"; };
 		B00000000000000000000018 /* HostConnectionFactory.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HostConnectionFactory.swift; sourceTree = "<group>"; };
 		B00000000000000000000019 /* HostSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HostSession.swift; sourceTree = "<group>"; };
+		B00000000000000000000020 /* OperationApproval.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OperationApproval.swift; sourceTree = "<group>"; };
+		B00000000000000000000021 /* AgentAdapterRegistry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AgentAdapterRegistry.swift; sourceTree = "<group>"; };
+		B00000000000000000000022 /* KitroomClock.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KitroomClock.swift; sourceTree = "<group>"; };
+		B00000000000000000000023 /* KitroomPersistence.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KitroomPersistence.swift; sourceTree = "<group>"; };
+		B00000000000000000000024 /* KitroomLogging.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KitroomLogging.swift; sourceTree = "<group>"; };
+		B00000000000000000000025 /* OperationApprovalStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OperationApprovalStore.swift; sourceTree = "<group>"; };
+		B00000000000000000000026 /* ProcessExecutor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProcessExecutor.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -118,6 +134,7 @@
 		A00000000000000000000005 /* KitroomApp */ = {
 			isa = PBXGroup;
 			children = (
+				B00000000000000000000008 /* AppDependencies.swift */,
 				B00000000000000000000004 /* AppSection.swift */,
 				B00000000000000000000002 /* AppModel.swift */,
 				B00000000000000000000003 /* DashboardView.swift */,
@@ -144,6 +161,7 @@
 				B00000000000000000000013 /* InventorySnapshot.swift */,
 				B00000000000000000000011 /* ManagedExtension.swift */,
 				B00000000000000000000012 /* ManagedHost.swift */,
+				B00000000000000000000020 /* OperationApproval.swift */,
 				B00000000000000000000014 /* OperationPlan.swift */,
 			);
 			path = Domain;
@@ -153,6 +171,7 @@
 			isa = PBXGroup;
 			children = (
 				B00000000000000000000015 /* AgentAdapter.swift */,
+				B00000000000000000000021 /* AgentAdapterRegistry.swift */,
 				A00000000000000000000009 /* Claude */,
 				A0000000000000000000000A /* Codex */,
 			);
@@ -180,6 +199,11 @@
 			children = (
 				B00000000000000000000018 /* HostConnectionFactory.swift */,
 				B00000000000000000000019 /* HostSession.swift */,
+				B00000000000000000000022 /* KitroomClock.swift */,
+				B00000000000000000000024 /* KitroomLogging.swift */,
+				B00000000000000000000023 /* KitroomPersistence.swift */,
+				B00000000000000000000025 /* OperationApprovalStore.swift */,
+				B00000000000000000000026 /* ProcessExecutor.swift */,
 			);
 			path = Infrastructure;
 			sourceTree = "<group>";
@@ -275,6 +299,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				C00000000000000000000008 /* AppDependencies.swift in Sources */,
 				C00000000000000000000004 /* AppSection.swift in Sources */,
 				C00000000000000000000002 /* AppModel.swift in Sources */,
 				C00000000000000000000003 /* DashboardView.swift in Sources */,
@@ -288,14 +313,21 @@
 			files = (
 				C00000000000000000000010 /* AgentKind.swift in Sources */,
 				C00000000000000000000015 /* AgentAdapter.swift in Sources */,
+				C00000000000000000000021 /* AgentAdapterRegistry.swift in Sources */,
 				C00000000000000000000016 /* ClaudeAdapter.swift in Sources */,
 				C00000000000000000000017 /* CodexAdapter.swift in Sources */,
 				C00000000000000000000018 /* HostConnectionFactory.swift in Sources */,
 				C00000000000000000000019 /* HostSession.swift in Sources */,
 				C00000000000000000000013 /* InventorySnapshot.swift in Sources */,
+				C00000000000000000000022 /* KitroomClock.swift in Sources */,
+				C00000000000000000000024 /* KitroomLogging.swift in Sources */,
+				C00000000000000000000023 /* KitroomPersistence.swift in Sources */,
 				C00000000000000000000011 /* ManagedExtension.swift in Sources */,
 				C00000000000000000000012 /* ManagedHost.swift in Sources */,
+				C00000000000000000000020 /* OperationApproval.swift in Sources */,
+				C00000000000000000000025 /* OperationApprovalStore.swift in Sources */,
 				C00000000000000000000014 /* OperationPlan.swift in Sources */,
+				C00000000000000000000026 /* ProcessExecutor.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -438,6 +470,77 @@
 			};
 			name = Release;
 		};
+		F00000000000000000000007 /* Test */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_TESTABILITY = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				ONLY_ACTIVE_ARCH = YES;
+				SDKROOT = macosx;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG TEST $(inherited)";
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+			};
+			name = Test;
+		};
+		F00000000000000000000008 /* Test */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_STYLE = Automatic;
+				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 1;
+				ENABLE_HARDENED_RUNTIME = YES;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = Kitroom;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.developer-tools";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MARKETING_VERSION = 0.1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.l0cka.kitroom;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "TEST $(inherited)";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 6.0;
+			};
+			name = Test;
+		};
+		F00000000000000000000009 /* Test */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				COMBINE_HIDPI_IMAGES = YES;
+				DEFINES_MODULE = YES;
+				DYLIB_COMPATIBILITY_VERSION = 1;
+				DYLIB_CURRENT_VERSION = 1;
+				DYLIB_INSTALL_NAME_BASE = "@rpath";
+				GENERATE_INFOPLIST_FILE = YES;
+				INSTALL_PATH = "$(LOCAL_LIBRARY_DIR)/Frameworks";
+				PRODUCT_BUNDLE_IDENTIFIER = com.l0cka.kitroom.core;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "TEST $(inherited)";
+				SWIFT_VERSION = 6.0;
+			};
+			name = Test;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -445,6 +548,7 @@
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				F00000000000000000000001 /* Debug */,
+				F00000000000000000000007 /* Test */,
 				F00000000000000000000002 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
@@ -454,6 +558,7 @@
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				F00000000000000000000003 /* Debug */,
+				F00000000000000000000008 /* Test */,
 				F00000000000000000000004 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
@@ -463,6 +568,7 @@
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				F00000000000000000000005 /* Debug */,
+				F00000000000000000000009 /* Test */,
 				F00000000000000000000006 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;

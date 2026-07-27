@@ -23,9 +23,9 @@ breakdown, dependencies, tests, and exit gates behind these phases.
 - [x] Remove fabricated inventory and remote-host state
 - [x] Record the initial distribution and sandbox decision
 - [x] Build the application bundle in the required verification script
-- [ ] Add structured privacy-aware logging
-- [ ] Add dependency injection for sessions, clocks, persistence, and approvals
-- [ ] Complete the App Sandbox feasibility tests
+- [x] Add structured privacy-aware logging
+- [x] Add dependency injection for sessions, clocks, persistence, and approvals
+- [x] Complete the App Sandbox feasibility tests
 
 Exit criterion: the application bundle, core library, and tests build together;
 the remaining runtime boundaries are injectable; and the distribution decision

@@ -31,6 +31,41 @@ The repository keeps Swift Package Manager support for fast core builds and
 tests. `Kitroom.xcodeproj` produces the macOS application bundle and embeds
 `KitroomCore`.
 
+## Feasibility evidence
+
+The repository includes a minimal, separately signed probe under
+`Tests/SandboxProbe` and a reproducible builder at
+`scripts/build-sandbox-probe.sh`. The probe uses App Sandbox with
+user-selected read/write access and outbound network access enabled.
+
+The probe was built and run twice on 2026-07-27:
+
+1. In the sandbox, `FileManager.homeDirectoryForCurrentUser` resolved to the
+   app container. The real `~/.codex`, `~/.agents`, `~/.claude`, and `~/.ssh`
+   locations were therefore not directly discoverable.
+2. A read-only security-scoped bookmark for an accessible directory was saved,
+   read, and restored successfully in a separate app launch.
+3. `/usr/bin/ssh -G localhost` launched from the sandbox and exited
+   successfully. This proves child-process execution, not remote
+   authentication or access to every SSH configuration.
+4. The probe exposes an `NSOpenPanel` flow for granting an external directory.
+   Automating acceptance of that panel is deliberately outside the probe
+   because the user gesture is the security boundary.
+
+The bookmark mechanism works, but sandboxing would require users to grant
+several hidden agent locations and relevant project roots before Kitroom could
+produce a complete inventory. Granting the entire home directory would be
+broader than Kitroom's intended access policy. That setup cost and incomplete
+initial discovery are unacceptable for the version 1 management workflow.
+
+Reproduce the automated portion with:
+
+```bash
+./scripts/build-sandbox-probe.sh
+./.build/sandbox-probe/KitroomSandboxProbe.app/Contents/MacOS/KitroomSandboxProbe --diagnostic
+./.build/sandbox-probe/KitroomSandboxProbe.app/Contents/MacOS/KitroomSandboxProbe --restore-only
+```
+
 ## Safety constraints
 
 Direct distribution does not permit unrestricted behavior:

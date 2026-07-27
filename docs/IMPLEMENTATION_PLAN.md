@@ -151,7 +151,7 @@ Do not begin M7 remote mutations before the local mutation gate in M6 passes.
 
 ## M1: Application and distribution foundation
 
-**Status:** In progress
+**Status:** Complete
 
 ### Objective
 
@@ -188,28 +188,32 @@ without weakening the testable core.
 - Provisional app icon and brand assets
 - Bundle identifier `com.l0cka.kitroom`
 - macOS 14 deployment target and Swift 6 build settings
-- Debug and Release configurations
+- Debug, Test, and Release configurations
 - Hardened Runtime build setting
 - Embedded `KitroomCore` framework
 - Direct-distribution and sandbox decision in ADR 0002
+- Privacy-aware structured logging with public and private fields
+- Injectable clocks, process execution, host sessions, adapter registry,
+  persistence, and approval storage
+- A signed App Sandbox feasibility probe for agent paths, persistent bookmarks,
+  and OpenSSH child-process execution
 - Package, test, and application-bundle checks in `scripts/verify.sh`
-
-Structured logging, full dependency injection, an explicit test build
-configuration, and sandbox feasibility testing remain open.
 
 ### Recommendation
 
 Plan for direct Developer ID distribution with Hardened Runtime and
-notarization. App Sandbox is required for Mac App Store distribution and limits
-unrestricted home-directory access, so the final decision must follow the
-feasibility spike rather than being assumed.
+notarization. The feasibility spike showed that App Sandbox hides the real home
+directory until users grant individual locations. Bookmarks and OpenSSH
+execution work, but the required grants create unacceptable setup friction and
+incomplete discovery for version 1.
 
 ### Tests
 
 - App launches from Xcode and command line.
 - Core tests still run without the app target.
 - Release configuration contains no debug entitlement.
-- Logs redact values marked private.
+- Log descriptions redact values marked private.
+- The sandbox probe restores its bookmark in a separate launch.
 
 ### Exit gate
 

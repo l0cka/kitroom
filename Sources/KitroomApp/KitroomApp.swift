@@ -9,6 +9,9 @@ struct KitroomApp: App {
             DashboardView()
                 .environmentObject(model)
                 .frame(minWidth: 960, minHeight: 640)
+                .task {
+                    await model.start()
+                }
         }
         .windowStyle(.titleBar)
         .defaultSize(width: 1180, height: 760)
