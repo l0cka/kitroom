@@ -10,6 +10,8 @@ struct InventoryProductView: View {
     @State private var diagnosticDocument: DiagnosticDocument?
     @State private var isExportingDiagnostics = false
     @State private var exportError: String?
+    @State private var isChoosingLocalSkill = false
+    @State private var isAddingCodexMCP = false
 
     var body: some View {
         ScrollView {
@@ -21,6 +23,10 @@ struct InventoryProductView: View {
                         title: "History is not being saved",
                         detail: warning
                     )
+                }
+                if let message = model.operationMessage,
+                   model.pendingOperationPlan == nil {
+                    statusBanner(message)
                 }
 
                 filters
@@ -60,6 +66,28 @@ struct InventoryProductView: View {
         )
         .sheet(item: $evidenceSelection) {
             EvidenceInspector(selection: $0)
+        }
+        .sheet(isPresented: $isChoosingLocalSkill) {
+            LocalSkillInstallSheet(
+                availableAgents: localInstallAgents
+            ) { url, agent in
+                Task {
+                    await model.planLocalSkillInstall(
+                        sourceDirectory: url,
+                        agent: agent
+                    )
+                }
+            }
+        }
+        .sheet(isPresented: $isAddingCodexMCP) {
+            CodexMCPAddSheet { name, url in
+                Task {
+                    await model.planAddCodexHTTPServer(
+                        name: name,
+                        url: url
+                    )
+                }
+            }
         }
         .fileExporter(
             isPresented: $isExportingDiagnostics,
@@ -105,6 +133,44 @@ struct InventoryProductView: View {
                 }
 
                 Spacer()
+
+                if selectedHost?.connection == .local {
+                    Button {
+                        isChoosingLocalSkill = true
+                    } label: {
+                        Label(
+                            "Install or update skill",
+                            systemImage: "plus.square.on.square"
+                        )
+                    }
+                    .disabled(localInstallAgents.isEmpty)
+                    .help(
+                        localInstallAgents.isEmpty
+                            ? "Run a complete local inventory scan before "
+                                + "planning an install."
+                            : "Choose a local skill directory and review its "
+                                + "exact install or update plan."
+                    )
+                }
+
+                if selectedHost?.connection == .local {
+                    Button {
+                        isAddingCodexMCP = true
+                    } label: {
+                        Label(
+                            "Add MCP server",
+                            systemImage: "network.badge.shield.half.filled"
+                        )
+                    }
+                    .disabled(!model.canPlanCodexMCPAdd)
+                    .help(
+                        model.canPlanCodexMCPAdd
+                            ? "Configure a credential-free HTTPS server "
+                                + "through a reviewed Codex plan."
+                            : "Run a complete local Codex inventory scan "
+                                + "before planning an MCP server."
+                    )
+                }
 
                 Button {
                     prepareDiagnosticExport()
@@ -312,6 +378,7 @@ struct InventoryProductView: View {
                                 package: row.package,
                                 capabilities: row.capabilities,
                                 installations: row.installations,
+                                snapshot: snapshot,
                                 sources: snapshot.catalogSources,
                                 evidence: snapshot.evidence,
                                 capturedAt: snapshot.capturedAt,
@@ -326,20 +393,43 @@ struct InventoryProductView: View {
                                 Text("Directly configured")
                                     .font(.headline)
                                 ForEach(standaloneRows, id: \.capability.id) { row in
-                                    InventoryCapabilityButton(
-                                        capability: row.capability,
-                                        installation: row.installation,
-                                        evidence: snapshot.evidence,
-                                        capturedAt: snapshot.capturedAt
-                                    ) {
-                                        evidenceSelection = selection(
-                                            title: row.capability.displayName,
-                                            source: nil,
+                                    HStack(spacing: 12) {
+                                        InventoryCapabilityButton(
+                                            capability: row.capability,
                                             installation: row.installation,
-                                            evidenceIDs: row.capability.evidenceIDs
-                                                + (row.installation?.evidenceIDs ?? []),
-                                            allEvidence: snapshot.evidence
-                                        )
+                                            evidence: snapshot.evidence,
+                                            capturedAt: snapshot.capturedAt
+                                        ) {
+                                            evidenceSelection = selection(
+                                                title: row.capability.displayName,
+                                                source: nil,
+                                                installation: row.installation,
+                                                evidenceIDs: row.capability.evidenceIDs
+                                                    + (row.installation?.evidenceIDs ?? []),
+                                                allEvidence: snapshot.evidence
+                                            )
+                                        }
+                                        if let installation = row.installation,
+                                           model.canPlanCodexMCPRemove(
+                                               capability: row.capability,
+                                               installation: installation,
+                                               snapshot: snapshot
+                                           ) {
+                                            Button(
+                                                "Plan MCP removal",
+                                                role: .destructive
+                                            ) {
+                                                Task {
+                                                    await model
+                                                        .planRemoveCodexMCPServer(
+                                                            capability: row.capability,
+                                                            installation: installation,
+                                                            snapshot: snapshot
+                                                        )
+                                                }
+                                            }
+                                            .buttonStyle(.borderless)
+                                        }
                                     }
                                 }
                             }
@@ -436,6 +526,17 @@ struct InventoryProductView: View {
         )
     }
 
+    private func statusBanner(_ message: String) -> some View {
+        Label(message, systemImage: "info.circle")
+            .font(.callout)
+            .padding(12)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(
+                .secondary.opacity(0.07),
+                in: RoundedRectangle(cornerRadius: 10)
+            )
+    }
+
     private var isFiltering: Bool {
         query != InventoryQuery()
     }
@@ -517,6 +618,12 @@ struct InventoryProductView: View {
         }
     }
 
+    private var localInstallAgents: [AgentKind] {
+        AgentKind.allCases.filter {
+            model.canPlanLocalSkillInstall(agent: $0)
+        }
+    }
+
     private func prepareDiagnosticExport() {
         do {
             diagnosticDocument = DiagnosticDocument(
@@ -543,9 +650,12 @@ private struct InventoryStandaloneRowData {
 }
 
 private struct InventoryPackageRow: View {
+    @EnvironmentObject private var model: AppModel
+
     let package: PackageRecord
     let capabilities: [ProvidedCapability]
     let installations: [InstallationRecord]
+    let snapshot: InventorySnapshot
     let sources: [CatalogSource]
     let evidence: [EvidenceRecord]
     let capturedAt: Date
@@ -563,22 +673,49 @@ private struct InventoryPackageRow: View {
                         let installation = installations.first {
                             $0.capabilityID == capability.id
                         }
-                        InventoryCapabilityButton(
-                            capability: capability,
-                            installation: installation,
-                            evidence: evidence,
-                            capturedAt: capturedAt
-                        ) {
-                            selectEvidence(
-                                selection(
-                                    title: capability.displayName,
-                                    source: source,
-                                    installation: installation,
-                                    evidenceIDs: capability.evidenceIDs
-                                        + (installation?.evidenceIDs ?? []),
-                                    allEvidence: evidence
+                        HStack(spacing: 12) {
+                            InventoryCapabilityButton(
+                                capability: capability,
+                                installation: installation,
+                                evidence: evidence,
+                                capturedAt: capturedAt
+                            ) {
+                                selectEvidence(
+                                    selection(
+                                        title: capability.displayName,
+                                        source: source,
+                                        installation: installation,
+                                        evidenceIDs: capability.evidenceIDs
+                                            + (installation?.evidenceIDs ?? []),
+                                        allEvidence: evidence
+                                    )
                                 )
-                            )
+                            }
+
+                            if let installation,
+                               model.canPlanLocalSkillUninstall(
+                                   capability: capability,
+                                   installation: installation,
+                                   snapshot: snapshot
+                               ) {
+                                Button(
+                                    "Plan uninstall",
+                                    role: .destructive
+                                ) {
+                                    Task {
+                                        await model.planLocalSkillUninstall(
+                                            capability: capability,
+                                            installation: installation,
+                                            snapshot: snapshot
+                                        )
+                                    }
+                                }
+                                .buttonStyle(.borderless)
+                                .help(
+                                    "Review an exact-target backup, uninstall, "
+                                        + "and verification plan."
+                                )
+                            }
                         }
                     }
                 }
@@ -598,6 +735,58 @@ private struct InventoryPackageRow: View {
                     Label("Show package evidence", systemImage: "doc.text.magnifyingglass")
                 }
                 .buttonStyle(.link)
+
+                if let packageInstallation,
+                   let source,
+                   let action = model.claudePluginToggleAction(
+                       package: package,
+                       installation: packageInstallation,
+                       source: source,
+                       snapshot: snapshot
+                   ) {
+                    Button(
+                        action == .enable
+                            ? "Plan enable"
+                            : "Plan disable"
+                    ) {
+                        Task {
+                            await model.planClaudePluginToggle(
+                                package: package,
+                                installation: packageInstallation,
+                                source: source,
+                                snapshot: snapshot
+                            )
+                        }
+                    }
+                    .help(
+                        "Review the exact native Claude Code command, "
+                        + "configuration backup, rollback, and verification."
+                    )
+                }
+
+                if let packageInstallation,
+                   let source,
+                   model.canPlanPluginUninstall(
+                       package: package,
+                       installation: packageInstallation,
+                       source: source,
+                       snapshot: snapshot
+                   ) {
+                    Button("Plan plugin uninstall", role: .destructive) {
+                        Task {
+                            await model.planPluginUninstall(
+                                package: package,
+                                installation: packageInstallation,
+                                source: source,
+                                snapshot: snapshot
+                            )
+                        }
+                    }
+                    .help(
+                        "Review the native uninstall command, exact "
+                            + "configuration backup, rollback, and verification."
+                    )
+                }
             }
             .padding(.top, 8)
         } label: {

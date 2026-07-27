@@ -216,7 +216,8 @@ struct CatalogueProductView: View {
                                     },
                                     capabilities: snapshot.providedCapabilities
                                         .filter { $0.packageID == package.id },
-                                    evidence: snapshot.evidence
+                                    evidence: snapshot.evidence,
+                                    catalogue: snapshot
                                 )
                             }
                         }
@@ -527,11 +528,14 @@ private enum CatalogueMode: String, CaseIterable, Identifiable {
 }
 
 private struct CataloguePackageRow: View {
+    @EnvironmentObject private var model: AppModel
+
     let package: PackageRecord
     let state: CataloguePackageState?
     let source: CatalogSource?
     let capabilities: [ProvidedCapability]
     let evidence: [EvidenceRecord]
+    let catalogue: CatalogueSnapshot
 
     var body: some View {
         DisclosureGroup {
@@ -608,6 +612,30 @@ private struct CataloguePackageRow: View {
                         .font(.caption)
                         .foregroundStyle(.secondary)
                     }
+                }
+
+                if let source,
+                   let action = model.cataloguePluginAction(
+                       package: package,
+                       state: state,
+                       source: source,
+                       catalogue: catalogue
+                   ) {
+                    Divider()
+                    Button(action.catalogueButtonTitle) {
+                        Task {
+                            await model.planCataloguePluginAction(
+                                package: package,
+                                state: state,
+                                source: source,
+                                catalogue: catalogue
+                            )
+                        }
+                    }
+                    .help(
+                        "Review the exact native command, configuration "
+                            + "backup, rollback limits, and fresh verification."
+                    )
                 }
             }
             .padding(.top, 10)
@@ -808,6 +836,23 @@ private extension UpdateStatus {
             "Update unknown"
         case .incomparable:
             "Not comparable"
+        }
+    }
+}
+
+private extension NativePluginAction {
+    var catalogueButtonTitle: String {
+        switch self {
+        case .install:
+            "Plan install"
+        case .update:
+            "Plan update"
+        case .enable:
+            "Plan enable"
+        case .disable:
+            "Plan disable"
+        case .uninstall:
+            "Plan uninstall"
         }
     }
 }

@@ -38,6 +38,7 @@ public protocol AgentAdapter: Sendable {
     var agent: AgentKind { get }
     var discoveryProfile: AgentDiscoveryProfile { get }
     var implementedCapabilities: AdapterCapabilities { get }
+    var userSkillRelativePath: String? { get }
 
     func inspect(
         context: InventoryContext,
@@ -56,6 +57,10 @@ public protocol AgentAdapter: Sendable {
 }
 
 public extension AgentAdapter {
+    var userSkillRelativePath: String? {
+        nil
+    }
+
     func inspect(
         using session: any HostSession
     ) async throws -> InventorySnapshot {

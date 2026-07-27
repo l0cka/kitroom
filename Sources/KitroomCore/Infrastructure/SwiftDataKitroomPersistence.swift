@@ -35,6 +35,7 @@ public actor SwiftDataKitroomPersistence: KitroomPersistence {
         case hostDiscovery
         case inventory
         case catalogue
+        case operation
     }
 
     private let container: ModelContainer
@@ -249,6 +250,46 @@ public actor SwiftDataKitroomPersistence: KitroomPersistence {
         try context.save()
     }
 
+    public func loadOperationRecords(
+        limit: Int = 200
+    ) throws -> [OperationRecord] {
+        try records(kind: .operation)
+            .map { try decode(OperationRecord.self, from: $0) }
+            .sorted { $0.updatedAt > $1.updatedAt }
+            .prefix(max(0, limit))
+            .map { $0 }
+    }
+
+    public func saveOperationRecord(_ record: OperationRecord) throws {
+        let context = ModelContext(container)
+        let key = "\(RecordKind.operation.rawValue):\(record.id.uuidString)"
+        let existing = try fetchAll(in: context).filter {
+            $0.kind == RecordKind.operation.rawValue && $0.key == key
+        }
+        let now = Date()
+        let payload = try encoder.encode(record)
+        if let stored = existing.first {
+            stored.payload = payload
+            stored.schemaVersion = Self.currentSchemaVersion
+            stored.updatedAt = now
+            for duplicate in existing.dropFirst() {
+                context.delete(duplicate)
+            }
+        } else {
+            context.insert(
+                KitroomStoredRecord(
+                    key: key,
+                    kind: RecordKind.operation.rawValue,
+                    createdAt: now,
+                    updatedAt: now,
+                    payload: payload
+                )
+            )
+        }
+        try trimOperationHistory(in: context)
+        try context.save()
+    }
+
     private func allInventorySnapshots() throws -> [InventorySnapshot] {
         try records(kind: .inventory)
             .map { try decode(InventorySnapshot.self, from: $0) }
@@ -350,6 +391,23 @@ public actor SwiftDataKitroomPersistence: KitroomPersistence {
             .sorted { $0.1.capturedAt > $1.1.capturedAt }
 
         for (record, _) in matching.dropFirst(historyLimitPerGrain) {
+            context.delete(record)
+        }
+    }
+
+    private func trimOperationHistory(
+        in context: ModelContext
+    ) throws {
+        let matching = try fetchAll(in: context)
+            .filter { $0.kind == RecordKind.operation.rawValue }
+            .map { record -> (KitroomStoredRecord, OperationRecord) in
+                (record, try decode(OperationRecord.self, from: record))
+            }
+            .sorted { $0.1.updatedAt > $1.1.updatedAt }
+
+        for (record, _) in matching.dropFirst(
+            max(200, historyLimitPerGrain)
+        ) {
             context.delete(record)
         }
     }

@@ -631,6 +631,8 @@ persistence.
 
 ## M6: Guarded local mutations
 
+**Status:** Complete
+
 ### Objective
 
 Safely change user-level Claude and Codex capability state on the local
@@ -698,7 +700,59 @@ mutation endpoint.
 - Failures retain a recoverable backup and actionable state.
 - Mutation tests use temporary profiles, never real user agent directories.
 
+### Delivered
+
+- Expanded operation plans with host identity, scope, source and content
+  digests, expected state, warnings, verification steps, typed execution data,
+  and a ten-minute expiry.
+- Added explicit operation and rollback states with durable SwiftData activity
+  records.
+- Added guarded install and uninstall for user-managed standalone skills on the
+  local Mac for both Codex and Claude Code.
+- Added standalone-skill update using a staged, digest-verified atomic
+  directory exchange, with the previous content retained for rollback.
+- Validated skill names, required a regular `SKILL.md`, rejected symbolic links
+  and special files, and bounded each source to 1,000 files and 50 MiB.
+- Staged installs beside the exact destination, verified the complete content
+  digest, and used an atomic rename into the agent's user skill directory.
+- Moved uninstalled skills into Kitroom's private application-support backup
+  area with owner-only directory permissions.
+- Added fresh agent inventory before apply and after the filesystem change.
+  Relevant state changes invalidate approval; post-change mismatch triggers
+  rollback and remains a distinct verification failure.
+- Added a plan-review sheet, action-specific approval buttons, and an Activity
+  screen for plans, results, backups, rollback state, and event timelines.
+- Added typed native plugin plans for Claude Code install, update, enable,
+  disable, and uninstall, and Codex install and uninstall. Plans bind the
+  marketplace source and refresh it before catalogue-backed apply.
+- Added typed native MCP plans for adding and removing user-scoped,
+  credential-free HTTPS Codex servers. The direct path rejects URLs containing
+  credentials, query parameters, or fragments and blocks plugin-provided MCP
+  servers.
+- Captured exact agent configuration before native commands, re-digested the
+  copy, and restored configuration plus an inverse native operation where one
+  exists.
+- Marked Claude Code update high risk because the detected CLI has no
+  version-pinned inverse. A failed code rollback stays visible as a rollback
+  failure; it is never reported as completed.
+
+### Gate evidence
+
+On 2026-07-27, the full suite passed 90 fixture and temporary-profile tests.
+Mutation coverage includes plan expiry, digest binding, idempotent no-op,
+changed source, catalogue, configuration, and inventory invalidation, stable
+copied-content digests, staging interruption, backup permissions, typed native
+arguments, successful install and uninstall, native CLI partial-output
+failure, secret redaction, agent-verification failure, rollback success and
+failure, symbolic-link rejection, blocking plugin-provided MCP removal, and
+operation-record persistence.
+
+All automated mutation tests use temporary directories and fake host sessions.
+They do not write to a developer's agent directories or any remote host.
+
 ## M7: Guarded remote mutations
+
+**Status:** In progress
 
 ### Objective
 

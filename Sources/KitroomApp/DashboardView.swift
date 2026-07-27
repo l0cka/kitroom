@@ -11,6 +11,10 @@ struct DashboardView: View {
             detail
         }
         .navigationSplitViewStyle(.balanced)
+        .sheet(item: $model.pendingOperationPlan) { plan in
+            OperationPlanReviewView(plan: plan)
+                .environmentObject(model)
+        }
     }
 
     private var sidebar: some View {
@@ -56,11 +60,7 @@ struct DashboardView: View {
         case .catalogue:
             CatalogueProductView()
         case .activity:
-            FeaturePlaceholder(
-                title: "Activity",
-                systemImage: "clock.arrow.circlepath",
-                message: "There are no operations to show. Kitroom can inspect inventory, but mutations and operation history are not implemented yet."
-            )
+            ActivityProductView()
         case .settings:
             FeaturePlaceholder(
                 title: "Settings",

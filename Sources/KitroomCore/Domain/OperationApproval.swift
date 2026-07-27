@@ -26,4 +26,10 @@ public struct OperationApproval: Codable, Hashable, Sendable {
     public func isValid(for plan: OperationPlan) -> Bool {
         planID == plan.id && planDigest == plan.approvalDigest
     }
+
+    public func isValid(for plan: OperationPlan, at date: Date) -> Bool {
+        isValid(for: plan)
+            && approvedAt >= plan.createdAt
+            && !plan.isExpired(at: date)
+    }
 }

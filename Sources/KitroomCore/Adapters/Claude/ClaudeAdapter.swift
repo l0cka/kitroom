@@ -2,6 +2,7 @@ import Foundation
 
 public struct ClaudeAdapter: AgentAdapter {
     public let agent = AgentKind.claude
+    public let userSkillRelativePath = ".claude/skills"
 
     public let discoveryProfile = AgentDiscoveryProfile(
         agent: .claude,

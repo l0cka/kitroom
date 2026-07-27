@@ -256,8 +256,8 @@ columns are name, kind, agent, scope, origin, state, version, and freshness.
 Keep catalogue refresh separate from package update. The screen must say that a
 refresh reads metadata and changes no installed state. Show source, installed
 and available versions, update support, compatibility, integrity, provided
-components, evidence, and freshness without adding an install affordance until
-the guarded mutation flow exists.
+components, evidence, and freshness. Offer install or update only when the
+relevant guarded local flow and fresh capability evidence exist.
 
 ### Host comparison
 
@@ -288,13 +288,20 @@ The review sheet must show:
 8. verification probes.
 
 The approval button names the action: **Install skill**, **Disable plugin**, or
-**Uninstall from build-server**. Do not use a generic **Continue** button.
+**Remove MCP server**. Do not use a generic **Continue** button.
 
 ### Evidence inspector
 
 Evidence is supporting material, not visual noise in the main table. Show probe
 name, captured time, source, parser version, status, and a bounded redacted
 diagnostic.
+
+### Activity record
+
+Show the action, target, agent, lifecycle state, backup location, rollback
+state, failure detail, and event timeline. A failed verification and a failed
+rollback need separate labels. Activity must never imply that an awaiting plan
+was applied.
 
 ## Action hierarchy
 

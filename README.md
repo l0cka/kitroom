@@ -46,14 +46,26 @@ Kitroom is in active early development. The repository currently contains:
 - durable SwiftData storage for hosts and bounded scan history;
 - inventory search and filters, source and evidence inspection, stale-state
   warnings, and redacted diagnostic export;
-- an approval-first operation model;
+- an approval-first operation model with expiring digest-bound plans;
+- guarded local standalone-skill install, update, and uninstall for Codex and
+  Claude Code, with exact-target backup, atomic exchange, fresh verification,
+  rollback, and durable activity history;
+- guarded native plugin install and uninstall for Claude Code and Codex,
+  Claude Code enable, disable, and update, and source-drift checks before
+  catalogue-backed changes;
+- guarded add and remove for credential-free HTTPS Codex MCP servers, while
+  blocking plugin-provided servers from the direct-configuration path;
 - unit tests and project documentation.
 
 The Hosts screen verifies platform details and agent availability. Inventory
 and Catalogue run fresh read-only scans, preserve recent history, and label
 unverified, stale, or incomplete state explicitly. Catalogue can compare
-installed state between two hosts without changing either one. Install, update,
-enable, disable, and uninstall operations are not implemented yet.
+installed state between two hosts without changing either one. Guarded local
+operations cover standalone skills, selected native plugin operations, and
+credential-free HTTPS Codex MCP servers. Every path uses an expiring plan,
+fresh preflight inventory, configuration or content backup, post-change
+verification, and a durable activity record. Remote-host mutations are still
+planned.
 
 ## Product principles
 

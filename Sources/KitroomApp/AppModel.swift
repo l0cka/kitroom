@@ -14,6 +14,10 @@ final class AppModel: ObservableObject {
     @Published private(set) var inventoryScanningHostIDs: Set<ManagedHost.ID> = []
     @Published private(set) var catalogueByKey: [InventoryKey: CatalogueSnapshot] = [:]
     @Published private(set) var catalogueScanningHostIDs: Set<ManagedHost.ID> = []
+    @Published private(set) var operationRecords: [OperationRecord] = []
+    @Published var pendingOperationPlan: OperationPlan?
+    @Published private(set) var applyingOperationIDs: Set<OperationPlan.ID> = []
+    @Published var operationMessage: String?
     @Published var projectDirectoryByHost: [ManagedHost.ID: String] = [:]
     @Published private(set) var persistenceWarning: String?
 
@@ -125,6 +129,8 @@ final class AppModel: ObservableObject {
                     )
                 }
             )
+            operationRecords = try await dependencies.persistence
+                .loadOperationRecords(limit: 200)
 
             discoveryHistory = try await dependencies.persistence
                 .loadHostDiscoveryHistory(hostID: nil, limit: 500)
@@ -457,6 +463,757 @@ final class AppModel: ObservableObject {
         )
     }
 
+    func canPlanLocalSkillInstall(agent: AgentKind) -> Bool {
+        do {
+            _ = try localMutationContext(agent: agent)
+            return true
+        } catch {
+            return false
+        }
+    }
+
+    func canPlanLocalSkillUninstall(
+        capability: ProvidedCapability,
+        installation: InstallationRecord?,
+        snapshot: InventorySnapshot
+    ) -> Bool {
+        guard capability.kind == .skill,
+              let installation,
+              installation.scope == .user,
+              installation.origin == .standalone,
+              installation.restriction == .userManaged,
+              installation.physicalOrigin != nil,
+              snapshot.status == .complete,
+              InventoryFreshness.evaluate(
+                capturedAt: snapshot.capturedAt,
+                now: dependencies.clock.now
+              ) == .current,
+              let host = selectedHost,
+              host.connection == .local,
+              installation.hostID == host.id
+        else {
+            return false
+        }
+        return true
+    }
+
+    func planLocalSkillInstall(
+        sourceDirectory: URL,
+        agent: AgentKind
+    ) async {
+        operationMessage = nil
+        let accessed = sourceDirectory.startAccessingSecurityScopedResource()
+        defer {
+            if accessed {
+                sourceDirectory.stopAccessingSecurityScopedResource()
+            }
+        }
+        do {
+            let context = try localMutationContext(agent: agent)
+            let plan: OperationPlan
+            do {
+                plan = try await context.engine.planInstall(
+                    host: context.host,
+                    hostIdentity: context.discovery.identity?.value,
+                    agent: agent,
+                    sourceDirectory: sourceDirectory,
+                    destinationRoot: context.destinationRoot,
+                    basedOnSnapshotAt: context.snapshot.capturedAt,
+                    createdAt: dependencies.clock.now
+                )
+            } catch LocalSkillOperationError.destinationExists {
+                plan = try await context.engine.planUpdate(
+                    host: context.host,
+                    hostIdentity: context.discovery.identity?.value,
+                    agent: agent,
+                    sourceDirectory: sourceDirectory,
+                    destinationRoot: context.destinationRoot,
+                    basedOnSnapshotAt: context.snapshot.capturedAt,
+                    createdAt: dependencies.clock.now
+                )
+            }
+            try await presentOperationPlan(plan)
+        } catch {
+            operationMessage = SensitiveValueRedactor.redact(
+                error.localizedDescription
+            )
+        }
+    }
+
+    func planLocalSkillUninstall(
+        capability: ProvidedCapability,
+        installation: InstallationRecord,
+        snapshot: InventorySnapshot
+    ) async {
+        operationMessage = nil
+        do {
+            guard canPlanLocalSkillUninstall(
+                capability: capability,
+                installation: installation,
+                snapshot: snapshot
+            ) else {
+                throw OperationProductError.unsupportedInventoryItem
+            }
+            let context = try localMutationContext(agent: capability.agent)
+            guard let physicalOrigin = installation.physicalOrigin else {
+                throw OperationProductError.missingExactTarget
+            }
+            let destination = URL(
+                fileURLWithPath: physicalOrigin
+            ).standardizedFileURL
+            guard destination.deletingLastPathComponent()
+                == context.destinationRoot.standardizedFileURL else {
+                throw OperationProductError.targetOutsideUserSkillRoot
+            }
+            let plan = try await context.engine.planUninstall(
+                host: context.host,
+                hostIdentity: context.discovery.identity?.value,
+                agent: capability.agent,
+                skillName: destination.lastPathComponent,
+                destinationDirectory: destination,
+                basedOnSnapshotAt: snapshot.capturedAt,
+                createdAt: dependencies.clock.now
+            )
+            try await presentOperationPlan(plan)
+        } catch {
+            operationMessage = SensitiveValueRedactor.redact(
+                error.localizedDescription
+            )
+        }
+    }
+
+    func claudePluginToggleAction(
+        package: PackageRecord,
+        installation: InstallationRecord?,
+        source: CatalogSource?,
+        snapshot: InventorySnapshot
+    ) -> NativePluginAction? {
+        guard dependencies.nativePluginOperations != nil,
+              package.agent == .claude,
+              let installation,
+              let source,
+              source.agent == .claude,
+              installation.agent == .claude,
+              installation.scope == .user,
+              installation.origin == .marketplace,
+              installation.restriction == .agentManaged,
+              snapshot.status == .complete,
+              InventoryFreshness.evaluate(
+                capturedAt: snapshot.capturedAt,
+                now: dependencies.clock.now
+              ) == .current,
+              let host = selectedHost,
+              host.connection == .local,
+              installation.hostID == host.id,
+              let discovery = discoveryByHost[host.id],
+              discovery.connectionState == .reachable,
+              discovery.identity != nil,
+              discovery.agents.contains(where: {
+                  $0.agent == .claude
+                      && $0.availability == .available
+                      && $0.executablePath?.hasPrefix("/") == true
+              })
+        else {
+            return nil
+        }
+        switch installation.state {
+        case .enabled:
+            return .disable
+        case .disabled:
+            return .enable
+        default:
+            return nil
+        }
+    }
+
+    func planClaudePluginToggle(
+        package: PackageRecord,
+        installation: InstallationRecord,
+        source: CatalogSource,
+        snapshot: InventorySnapshot
+    ) async {
+        operationMessage = nil
+        do {
+            guard let action = claudePluginToggleAction(
+                package: package,
+                installation: installation,
+                source: source,
+                snapshot: snapshot
+            ) else {
+                throw OperationProductError.unsupportedInventoryItem
+            }
+            guard let engine = dependencies.nativePluginOperations else {
+                throw OperationProductError.operationEngineUnavailable(
+                    dependencies.operationIssue
+                )
+            }
+            guard let host = selectedHost,
+                  let discovery = discoveryByHost[host.id],
+                  let hostIdentity = discovery.identity?.value,
+                  let homeDirectory = discovery.platform?.homeDirectory,
+                  let executablePath = discovery.agents.first(where: {
+                      $0.agent == .claude
+                  })?.executablePath else {
+                throw OperationProductError.hostDiscoveryRequired
+            }
+            let configurationPath = URL(
+                fileURLWithPath: homeDirectory
+            )
+            .appendingPathComponent(".claude/settings.json")
+            .standardizedFileURL
+            .path
+            let plan = try await engine.planClaudeToggle(
+                host: host,
+                hostIdentity: hostIdentity,
+                action: action,
+                package: package,
+                source: source,
+                installation: installation,
+                executablePath: executablePath,
+                configurationPaths: [configurationPath],
+                basedOnSnapshotAt: snapshot.capturedAt,
+                createdAt: dependencies.clock.now
+            )
+            try await presentOperationPlan(plan)
+        } catch {
+            operationMessage = SensitiveValueRedactor.redact(
+                error.localizedDescription
+            )
+        }
+    }
+
+    func cataloguePluginAction(
+        package: PackageRecord,
+        state: CataloguePackageState?,
+        source: CatalogSource?,
+        catalogue: CatalogueSnapshot
+    ) -> NativePluginAction? {
+        guard let source,
+              source.kind == .marketplace,
+              catalogue.status == .complete,
+              InventoryFreshness.evaluate(
+                  capturedAt: catalogue.capturedAt,
+                  now: dependencies.clock.now
+              ) == .current,
+              let host = selectedHost,
+              host.connection == .local,
+              catalogue.hostID == host.id,
+              catalogue.agent == package.agent,
+              let inventory = inventory(for: host, agent: package.agent),
+              inventory.status == .complete,
+              InventoryFreshness.evaluate(
+                  capturedAt: inventory.capturedAt,
+                  now: dependencies.clock.now
+              ) == .current,
+              nativePluginPlanningContext(
+                  agent: package.agent
+              ) != nil
+        else {
+            return nil
+        }
+        switch state?.updateStatus ?? .notInstalled {
+        case .notInstalled:
+            guard supports(
+                .installPlugin,
+                in: catalogue.capabilities
+            ), state?.compatibility != .incompatible,
+               state?.restriction != .administratorManaged,
+               !inventory.installations.contains(where: {
+                   $0.packageID == package.id
+               }) else {
+                return nil
+            }
+            return .install
+        case .updateAvailable:
+            guard package.agent == .claude,
+                  supports(
+                      .updatePlugin,
+                      in: catalogue.capabilities
+                  ),
+                  state?.restriction == .agentManaged,
+                  inventory.installations.contains(where: {
+                      $0.packageID == package.id
+                          && $0.scope == .user
+                  }) else {
+                return nil
+            }
+            return .update
+        case .upToDate, .unknown, .incomparable:
+            return nil
+        }
+    }
+
+    func planCataloguePluginAction(
+        package: PackageRecord,
+        state: CataloguePackageState?,
+        source: CatalogSource,
+        catalogue: CatalogueSnapshot
+    ) async {
+        operationMessage = nil
+        do {
+            guard let action = cataloguePluginAction(
+                package: package,
+                state: state,
+                source: source,
+                catalogue: catalogue
+            ) else {
+                throw OperationProductError.unsupportedInventoryItem
+            }
+            guard let host = selectedHost,
+                  let inventory = inventory(
+                      for: host,
+                      agent: package.agent
+                  ),
+                  let context = nativePluginPlanningContext(
+                      agent: package.agent
+                  ),
+                  let engine = dependencies.nativePluginOperations else {
+                throw OperationProductError.hostDiscoveryRequired
+            }
+            let installation = inventory.installations.first {
+                $0.packageID == package.id && $0.capabilityID == nil
+            } ?? inventory.installations.first {
+                $0.packageID == package.id
+            }
+            let plan = try await engine.planPluginAction(
+                host: host,
+                hostIdentity: context.hostIdentity,
+                agent: package.agent,
+                action: action,
+                package: package,
+                source: source,
+                installation: installation,
+                executablePath: context.executablePath,
+                configurationPaths: context.configurationPaths,
+                basedOnSnapshotAt: max(
+                    inventory.capturedAt,
+                    catalogue.capturedAt
+                ),
+                createdAt: dependencies.clock.now
+            )
+            try await presentOperationPlan(plan)
+        } catch {
+            operationMessage = SensitiveValueRedactor.redact(
+                error.localizedDescription
+            )
+        }
+    }
+
+    func canPlanPluginUninstall(
+        package: PackageRecord,
+        installation: InstallationRecord?,
+        source: CatalogSource?,
+        snapshot: InventorySnapshot
+    ) -> Bool {
+        guard let installation,
+              let source,
+              source.kind == .marketplace,
+              installation.scope == .user,
+              installation.origin == .marketplace,
+              installation.restriction == .agentManaged,
+              snapshot.status == .complete,
+              InventoryFreshness.evaluate(
+                  capturedAt: snapshot.capturedAt,
+                  now: dependencies.clock.now
+              ) == .current,
+              supports(.uninstallPlugin, in: snapshot.capabilities),
+              nativePluginPlanningContext(agent: package.agent) != nil
+        else {
+            return false
+        }
+        return true
+    }
+
+    func planPluginUninstall(
+        package: PackageRecord,
+        installation: InstallationRecord,
+        source: CatalogSource,
+        snapshot: InventorySnapshot
+    ) async {
+        operationMessage = nil
+        do {
+            guard canPlanPluginUninstall(
+                package: package,
+                installation: installation,
+                source: source,
+                snapshot: snapshot
+            ), let host = selectedHost,
+               let context = nativePluginPlanningContext(
+                   agent: package.agent
+               ),
+               let engine = dependencies.nativePluginOperations else {
+                throw OperationProductError.unsupportedInventoryItem
+            }
+            let plan = try await engine.planPluginAction(
+                host: host,
+                hostIdentity: context.hostIdentity,
+                agent: package.agent,
+                action: .uninstall,
+                package: package,
+                source: source,
+                installation: installation,
+                executablePath: context.executablePath,
+                configurationPaths: context.configurationPaths,
+                basedOnSnapshotAt: snapshot.capturedAt,
+                createdAt: dependencies.clock.now
+            )
+            try await presentOperationPlan(plan)
+        } catch {
+            operationMessage = SensitiveValueRedactor.redact(
+                error.localizedDescription
+            )
+        }
+    }
+
+    var canPlanCodexMCPAdd: Bool {
+        guard dependencies.nativeMCPOperations != nil,
+              let host = selectedHost,
+              host.connection == .local,
+              let snapshot = inventory(for: host, agent: .codex),
+              snapshot.status == .complete,
+              InventoryFreshness.evaluate(
+                  capturedAt: snapshot.capturedAt,
+                  now: dependencies.clock.now
+              ) == .current,
+              supports(.mcpInventory, in: snapshot.capabilities),
+              nativePluginPlanningContext(agent: .codex) != nil else {
+            return false
+        }
+        return true
+    }
+
+    func planAddCodexHTTPServer(
+        name: String,
+        url: String
+    ) async {
+        operationMessage = nil
+        do {
+            guard canPlanCodexMCPAdd,
+                  let host = selectedHost,
+                  let snapshot = inventory(for: host, agent: .codex),
+                  let context = nativePluginPlanningContext(agent: .codex),
+                  let configurationPath = context.configurationPaths.first,
+                  let engine = dependencies.nativeMCPOperations else {
+                throw OperationProductError.freshCompleteInventoryRequired
+            }
+            let existing = snapshot.providedCapabilities.first {
+                $0.packageID == nil
+                    && $0.kind == .mcpServer
+                    && $0.name == name
+            }
+            let plan = try await engine.planAddCodexHTTPServer(
+                host: host,
+                hostIdentity: context.hostIdentity,
+                serverName: name,
+                serverURL: url,
+                executablePath: context.executablePath,
+                configurationPath: configurationPath,
+                existingCapability: existing,
+                basedOnSnapshotAt: snapshot.capturedAt,
+                createdAt: dependencies.clock.now
+            )
+            try await presentOperationPlan(plan)
+        } catch {
+            operationMessage = SensitiveValueRedactor.redact(
+                error.localizedDescription
+            )
+        }
+    }
+
+    func canPlanCodexMCPRemove(
+        capability: ProvidedCapability,
+        installation: InstallationRecord?,
+        snapshot: InventorySnapshot
+    ) -> Bool {
+        guard dependencies.nativeMCPOperations != nil,
+              capability.agent == .codex,
+              capability.kind == .mcpServer,
+              capability.packageID == nil,
+              let installation,
+              installation.scope == .user,
+              installation.origin == .standalone,
+              installation.restriction == .agentManaged,
+              snapshot.status == .complete,
+              InventoryFreshness.evaluate(
+                  capturedAt: snapshot.capturedAt,
+                  now: dependencies.clock.now
+              ) == .current,
+              supports(.mcpInventory, in: snapshot.capabilities),
+              nativePluginPlanningContext(agent: .codex) != nil else {
+            return false
+        }
+        return true
+    }
+
+    func planRemoveCodexMCPServer(
+        capability: ProvidedCapability,
+        installation: InstallationRecord,
+        snapshot: InventorySnapshot
+    ) async {
+        operationMessage = nil
+        do {
+            guard canPlanCodexMCPRemove(
+                capability: capability,
+                installation: installation,
+                snapshot: snapshot
+            ), let host = selectedHost,
+               let context = nativePluginPlanningContext(agent: .codex),
+               let configurationPath = context.configurationPaths.first,
+               let engine = dependencies.nativeMCPOperations else {
+                throw OperationProductError.unsupportedInventoryItem
+            }
+            let plan = try await engine.planRemoveCodexServer(
+                host: host,
+                hostIdentity: context.hostIdentity,
+                capability: capability,
+                installation: installation,
+                executablePath: context.executablePath,
+                configurationPath: configurationPath,
+                basedOnSnapshotAt: snapshot.capturedAt,
+                createdAt: dependencies.clock.now
+            )
+            try await presentOperationPlan(plan)
+        } catch {
+            operationMessage = SensitiveValueRedactor.redact(
+                error.localizedDescription
+            )
+        }
+    }
+
+    func applyPendingOperation() async {
+        guard let plan = pendingOperationPlan,
+              !applyingOperationIDs.contains(plan.id)
+        else {
+            return
+        }
+        operationMessage = nil
+        applyingOperationIDs.insert(plan.id)
+        defer {
+            applyingOperationIDs.remove(plan.id)
+        }
+
+        do {
+            guard let host = hosts.first(where: { $0.id == plan.hostID }),
+                  host.connection == .local else {
+                throw OperationProductError.localHostRequired
+            }
+            guard discoveryByHost[host.id]?.identity?.value
+                    == plan.hostIdentity else {
+                throw OperationProductError.hostIdentityChanged
+            }
+            guard let adapter = dependencies.adapterRegistry.adapter(
+                for: plan.agent
+            ) else {
+                throw OperationProductError.adapterUnavailable
+            }
+            let session = try await dependencies.hostConnectionFactory
+                .connect(to: host)
+            let approval = OperationApproval(
+                plan: plan,
+                approvedAt: dependencies.clock.now
+            )
+            await dependencies.approvalStore.save(approval)
+
+            let preflightSnapshot = try await adapter.inspect(
+                context: .hostOnly,
+                using: session
+            )
+            let key = InventoryKey(hostID: host.id, agent: plan.agent)
+            inventoryByKey[key] = preflightSnapshot
+            try await dependencies.persistence.saveInventorySnapshot(
+                preflightSnapshot
+            )
+            var preflightMatches = operationTargetMatches(
+                plan: plan,
+                snapshot: preflightSnapshot,
+                phase: .beforeApply
+            )
+            if case let .nativePlugin(spec) = plan.execution,
+               spec.requiresCataloguePreflight {
+                let freshCatalogue = try await adapter.inspectCatalogue(
+                    installed: preflightSnapshot,
+                    using: session
+                )
+                catalogueByKey[key] = freshCatalogue
+                try await dependencies.persistence.saveCatalogueSnapshot(
+                    freshCatalogue
+                )
+                preflightMatches = preflightMatches
+                    && catalogueTargetMatches(
+                        plan: plan,
+                        catalogue: freshCatalogue
+                    )
+            }
+            let preflight = OperationPreflight(
+                inspectedAt: preflightSnapshot.capturedAt,
+                targetStateMatchesPlan: preflightMatches
+            )
+            let persistence = dependencies.persistence
+            let result: OperationRecord
+            switch plan.execution {
+            case .localSkill:
+                guard let engine = dependencies.localSkillOperations else {
+                    throw OperationProductError.operationEngineUnavailable(
+                        dependencies.operationIssue
+                    )
+                }
+                result = await engine.apply(
+                    plan: plan,
+                    approval: approval,
+                    preflight: preflight,
+                    now: dependencies.clock.now
+                ) { [weak self] in
+                    await inspectOperationTarget(
+                        adapter: adapter,
+                        session: session,
+                        persistence: persistence,
+                        plan: plan,
+                        key: key,
+                        phase: .afterApply,
+                        update: { verified in
+                            await MainActor.run {
+                                self?.inventoryByKey[key] = verified
+                            }
+                        }
+                    )
+                }
+            case .nativePlugin:
+                guard let engine = dependencies.nativePluginOperations else {
+                    throw OperationProductError.operationEngineUnavailable(
+                        dependencies.operationIssue
+                    )
+                }
+                result = await engine.apply(
+                    plan: plan,
+                    approval: approval,
+                    preflight: preflight,
+                    session: session,
+                    now: dependencies.clock.now,
+                    verifyExpectedState: { [weak self] in
+                        await inspectOperationTarget(
+                            adapter: adapter,
+                            session: session,
+                            persistence: persistence,
+                            plan: plan,
+                            key: key,
+                            phase: .afterApply,
+                            update: { verified in
+                                await MainActor.run {
+                                    self?.inventoryByKey[key] = verified
+                                }
+                            }
+                        )
+                    },
+                    verifyRolledBackState: { [weak self] in
+                        await inspectOperationTarget(
+                            adapter: adapter,
+                            session: session,
+                            persistence: persistence,
+                            plan: plan,
+                            key: key,
+                            phase: .beforeApply,
+                            update: { verified in
+                                await MainActor.run {
+                                    self?.inventoryByKey[key] = verified
+                                }
+                            }
+                        )
+                    }
+                )
+            case .nativeMCP:
+                guard let engine = dependencies.nativeMCPOperations else {
+                    throw OperationProductError.operationEngineUnavailable(
+                        dependencies.operationIssue
+                    )
+                }
+                result = await engine.apply(
+                    plan: plan,
+                    approval: approval,
+                    preflight: preflight,
+                    session: session,
+                    now: dependencies.clock.now,
+                    verifyExpectedState: { [weak self] in
+                        await inspectOperationTarget(
+                            adapter: adapter,
+                            session: session,
+                            persistence: persistence,
+                            plan: plan,
+                            key: key,
+                            phase: .afterApply,
+                            update: { verified in
+                                await MainActor.run {
+                                    self?.inventoryByKey[key] = verified
+                                }
+                            }
+                        )
+                    },
+                    verifyRolledBackState: { [weak self] in
+                        await inspectOperationTarget(
+                            adapter: adapter,
+                            session: session,
+                            persistence: persistence,
+                            plan: plan,
+                            key: key,
+                            phase: .beforeApply,
+                            update: { verified in
+                                await MainActor.run {
+                                    self?.inventoryByKey[key] = verified
+                                }
+                            }
+                        )
+                    }
+                )
+            case nil:
+                throw OperationProductError.unsupportedInventoryItem
+            }
+
+            upsertOperationRecord(result)
+            try await dependencies.persistence.saveOperationRecord(result)
+            await dependencies.approvalStore.removeApproval(for: plan.id)
+            pendingOperationPlan = nil
+
+            if result.rollbackState == .succeeded
+                || result.state == .rolledBack {
+                let restored = try? await adapter.inspect(
+                    context: .hostOnly,
+                    using: session
+                )
+                if let restored {
+                    inventoryByKey[key] = restored
+                    try? await dependencies.persistence.saveInventorySnapshot(
+                        restored
+                    )
+                }
+            }
+            selectedSection = .activity
+            operationMessage = result.state == .completed
+                ? "The operation completed with fresh matching evidence."
+                : result.failure
+        } catch {
+            operationMessage = SensitiveValueRedactor.redact(
+                error.localizedDescription
+            )
+        }
+    }
+
+    func dismissPendingOperation() async {
+        guard let plan = pendingOperationPlan else {
+            return
+        }
+        await dependencies.approvalStore.removeApproval(for: plan.id)
+        let existing = operationRecords.first { $0.id == plan.id }
+            ?? awaitingRecord(for: plan)
+        let dismissed = existing.transitioned(
+            to: .invalidated,
+            at: dependencies.clock.now,
+            message: "The plan review was dismissed without applying a change.",
+            failure: "Not approved."
+        )
+        upsertOperationRecord(dismissed)
+        try? await dependencies.persistence.saveOperationRecord(dismissed)
+        pendingOperationPlan = nil
+    }
+
     func makeDiagnosticReport() throws -> Data {
         try DiagnosticReportBuilder.makeReport(
             generatedAt: dependencies.clock.now,
@@ -466,9 +1223,358 @@ final class AppModel: ObservableObject {
             catalogues: Array(catalogueByKey.values)
         )
     }
+
+    private func localMutationContext(
+        agent: AgentKind
+    ) throws -> LocalMutationContext {
+        guard let engine = dependencies.localSkillOperations else {
+            throw OperationProductError.operationEngineUnavailable(
+                dependencies.operationIssue
+            )
+        }
+        guard let host = selectedHost, host.connection == .local else {
+            throw OperationProductError.localHostRequired
+        }
+        guard let discovery = discoveryByHost[host.id],
+              discovery.connectionState == .reachable,
+              discovery.identity != nil,
+              let homeDirectory = discovery.platform?.homeDirectory else {
+            throw OperationProductError.hostDiscoveryRequired
+        }
+        guard let snapshot = inventory(for: host, agent: agent),
+              snapshot.status == .complete,
+              InventoryFreshness.evaluate(
+                capturedAt: snapshot.capturedAt,
+                now: dependencies.clock.now
+              ) == .current else {
+            throw OperationProductError.freshCompleteInventoryRequired
+        }
+        guard let adapter = dependencies.adapterRegistry.adapter(for: agent),
+              let relativePath = adapter.userSkillRelativePath else {
+            throw OperationProductError.adapterUnavailable
+        }
+        let destinationRoot = URL(fileURLWithPath: homeDirectory)
+            .appendingPathComponent(relativePath, isDirectory: true)
+            .standardizedFileURL
+        return LocalMutationContext(
+            engine: engine,
+            host: host,
+            discovery: discovery,
+            snapshot: snapshot,
+            destinationRoot: destinationRoot
+        )
+    }
+
+    private func nativePluginPlanningContext(
+        agent: AgentKind
+    ) -> NativePluginPlanningContext? {
+        guard let host = selectedHost,
+              host.connection == .local,
+              let discovery = discoveryByHost[host.id],
+              discovery.connectionState == .reachable,
+              let hostIdentity = discovery.identity?.value,
+              let homeDirectory = discovery.platform?.homeDirectory,
+              let executablePath = discovery.agents.first(where: {
+                  $0.agent == agent
+                      && $0.availability == .available
+              })?.executablePath,
+              executablePath.hasPrefix("/") else {
+            return nil
+        }
+        let configurationRelativePath = agent == .claude
+            ? ".claude/settings.json"
+            : ".codex/config.toml"
+        return NativePluginPlanningContext(
+            hostIdentity: hostIdentity,
+            executablePath: executablePath,
+            configurationPaths: [
+                URL(fileURLWithPath: homeDirectory)
+                    .appendingPathComponent(configurationRelativePath)
+                    .standardizedFileURL
+                    .path
+            ]
+        )
+    }
+
+    private func presentOperationPlan(_ plan: OperationPlan) async throws {
+        let record = awaitingRecord(for: plan)
+        upsertOperationRecord(record)
+        try await dependencies.persistence.saveOperationRecord(record)
+        pendingOperationPlan = plan
+    }
+
+    private func awaitingRecord(
+        for plan: OperationPlan
+    ) -> OperationRecord {
+        OperationRecord(
+            plan: plan,
+            state: .awaitingApproval,
+            updatedAt: dependencies.clock.now,
+            events: [
+                OperationEvent(
+                    state: .planned,
+                    occurredAt: plan.createdAt,
+                    message: "The immutable operation plan was created."
+                ),
+                OperationEvent(
+                    state: .awaitingApproval,
+                    occurredAt: dependencies.clock.now,
+                    message: "Review the exact target and expected effect."
+                )
+            ]
+        )
+    }
+
+    private func upsertOperationRecord(_ record: OperationRecord) {
+        operationRecords.removeAll { $0.id == record.id }
+        operationRecords.append(record)
+        operationRecords.sort { $0.updatedAt > $1.updatedAt }
+    }
 }
 
-struct InventoryKey: Hashable {
+private struct LocalMutationContext {
+    let engine: LocalSkillOperationEngine
+    let host: ManagedHost
+    let discovery: HostDiscoverySnapshot
+    let snapshot: InventorySnapshot
+    let destinationRoot: URL
+}
+
+private struct NativePluginPlanningContext {
+    let hostIdentity: String
+    let executablePath: String
+    let configurationPaths: [String]
+}
+
+private func supports(
+    _ feature: AdapterFeature,
+    in reports: [AdapterCapabilityReport]
+) -> Bool {
+    reports.first { $0.feature == feature }?.support == .supported
+}
+
+private enum OperationVerificationPhase: Sendable {
+    case beforeApply
+    case afterApply
+}
+
+private func operationTargetMatches(
+    plan: OperationPlan,
+    snapshot: InventorySnapshot,
+    phase: OperationVerificationPhase
+) -> Bool {
+    guard snapshot.status == .complete else {
+        return false
+    }
+    switch plan.execution {
+    case let .localSkill(spec):
+        let targetIsReported = snapshot.installations.contains {
+            installation in
+            guard let path = installation.physicalOrigin else {
+                return false
+            }
+            return URL(fileURLWithPath: path).standardizedFileURL.path
+                == URL(
+                    fileURLWithPath: spec.destinationPath
+                ).standardizedFileURL.path
+                && installation.origin == .standalone
+                && installation.scope == .user
+        }
+        switch (spec.action, phase) {
+        case (.install, .beforeApply), (.uninstall, .afterApply):
+            return !targetIsReported
+        case (.uninstall, .beforeApply),
+             (.install, .afterApply),
+             (.update, .beforeApply),
+             (.update, .afterApply):
+            return targetIsReported
+        }
+    case let .nativePlugin(spec):
+        let parts = spec.selector.split(
+            separator: "@",
+            omittingEmptySubsequences: false
+        )
+        guard parts.count == 2 else {
+            return false
+        }
+        let matchingSources = snapshot.catalogSources.filter {
+            $0.name == String(parts[1])
+                && ($0.reference ?? $0.name) == plan.sourceReference
+                && (plan.revision == nil || $0.revision == plan.revision)
+        }
+        let sourceIDs = Set(matchingSources.map(\.id))
+        let package = snapshot.packages.first(where: {
+            $0.name == String(parts[0])
+                && $0.sourceID.map(sourceIDs.contains) == true
+        })
+        let installation = package.flatMap { package in
+            snapshot.installations.first(where: {
+                $0.packageID == package.id && $0.capabilityID == nil
+            }) ?? snapshot.installations.first(where: {
+                $0.packageID == package.id
+            })
+        }
+        let expectedInstalled: Bool
+        let expectedState: EffectiveState?
+        let expectedVersion: String?
+        switch phase {
+        case .beforeApply:
+            expectedInstalled = spec.expectedBeforeInstalled
+            expectedState = spec.expectedBeforeState
+            expectedVersion = spec.expectedBeforeVersion
+        case .afterApply:
+            expectedInstalled = spec.expectedAfterInstalled
+            expectedState = spec.expectedAfterState
+            expectedVersion = spec.expectedAfterVersion
+        }
+        guard expectedInstalled else {
+            return installation == nil
+        }
+        guard let package, let installation,
+              installation.scope == spec.scope else {
+            return false
+        }
+        if let digest = plan.contentDigest,
+           package.manifestDigest != digest {
+            return false
+        }
+        if let expectedState, installation.state != expectedState {
+            return false
+        }
+        if let expectedVersion,
+           installation.installedVersion ?? package.version
+            != expectedVersion {
+            return false
+        }
+        return true
+    case let .nativeMCP(spec):
+        let capability = snapshot.providedCapabilities.first {
+            $0.packageID == nil
+                && $0.kind == .mcpServer
+                && $0.name == spec.serverName
+        }
+        let installation = capability.flatMap { capability in
+            snapshot.installations.first {
+                $0.capabilityID == capability.id
+            }
+        }
+        let expectedConfigured: Bool
+        switch phase {
+        case .beforeApply:
+            expectedConfigured = spec.expectedBeforeConfigured
+        case .afterApply:
+            expectedConfigured = spec.expectedAfterConfigured
+        }
+        guard expectedConfigured else {
+            return installation == nil
+        }
+        return installation?.scope == spec.scope
+            && installation?.origin == .standalone
+    case nil:
+        return false
+    }
+}
+
+private func inspectOperationTarget(
+    adapter: any AgentAdapter,
+    session: any HostSession,
+    persistence: any KitroomPersistence,
+    plan: OperationPlan,
+    key: InventoryKey,
+    phase: OperationVerificationPhase,
+    update: @escaping @Sendable (InventorySnapshot) async -> Void
+) async -> Bool {
+    do {
+        let verified = try await adapter.inspect(
+            context: .hostOnly,
+            using: session
+        )
+        try await persistence.saveInventorySnapshot(verified)
+        await update(verified)
+        return operationTargetMatches(
+            plan: plan,
+            snapshot: verified,
+            phase: phase
+        )
+    } catch {
+        return false
+    }
+}
+
+private func catalogueTargetMatches(
+    plan: OperationPlan,
+    catalogue: CatalogueSnapshot
+) -> Bool {
+    guard catalogue.status == .complete,
+          catalogue.hostID == plan.hostID,
+          catalogue.agent == plan.agent,
+          catalogue.capturedAt >= plan.basedOnSnapshotAt,
+          case let .nativePlugin(spec) = plan.execution else {
+        return false
+    }
+    let parts = spec.selector.split(
+        separator: "@",
+        omittingEmptySubsequences: false
+    )
+    guard parts.count == 2,
+          let source = catalogue.sources.first(where: {
+              $0.name == String(parts[1])
+          }),
+          (source.reference ?? source.name) == plan.sourceReference,
+          plan.revision == nil || source.revision == plan.revision,
+          let package = catalogue.packages.first(where: {
+              $0.name == String(parts[0])
+                  && $0.sourceID == source.id
+          }) else {
+        return false
+    }
+    return (plan.version == nil || package.version == plan.version)
+        && (
+            plan.contentDigest == nil
+                || package.manifestDigest == plan.contentDigest
+        )
+}
+
+private enum OperationProductError: LocalizedError {
+    case operationEngineUnavailable(String?)
+    case localHostRequired
+    case hostDiscoveryRequired
+    case freshCompleteInventoryRequired
+    case hostIdentityChanged
+    case adapterUnavailable
+    case unsupportedInventoryItem
+    case missingExactTarget
+    case targetOutsideUserSkillRoot
+
+    var errorDescription: String? {
+        switch self {
+        case let .operationEngineUnavailable(detail):
+            if let detail, !detail.isEmpty {
+                "Local operations are unavailable: \(detail)"
+            } else {
+                "Local operations are unavailable."
+            }
+        case .localHostRequired:
+            "This operation is currently limited to the local Mac."
+        case .hostDiscoveryRequired:
+            "Check the local host before planning a change."
+        case .freshCompleteInventoryRequired:
+            "Run a complete inventory scan before planning a change."
+        case .hostIdentityChanged:
+            "The verified host identity no longer matches the plan."
+        case .adapterUnavailable:
+            "The selected agent cannot plan this operation."
+        case .unsupportedInventoryItem:
+            "This inventory item, scope, source, or agent capability does not support the requested guarded operation."
+        case .missingExactTarget:
+            "The inventory does not contain an exact installed path."
+        case .targetOutsideUserSkillRoot:
+            "The installed path is outside the agent's verified user skill directory."
+        }
+    }
+}
+
+struct InventoryKey: Hashable, Sendable {
     let hostID: ManagedHost.ID
     let agent: AgentKind
 }

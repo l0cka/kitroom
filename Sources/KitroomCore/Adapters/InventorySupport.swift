@@ -694,7 +694,9 @@ enum SkillInventoryScanner {
                     scope: scope,
                     origin: origin,
                     state: .enabled,
-                    physicalOrigin: path,
+                    physicalOrigin: URL(fileURLWithPath: path)
+                        .deletingLastPathComponent()
+                        .path,
                     restriction: scope == .managed ? .administratorManaged : .userManaged,
                     evidenceIDs: [file.evidence.id]
                 )

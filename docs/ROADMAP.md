@@ -63,12 +63,15 @@ used to reconcile it.
 
 ## Phase 4: Guarded local mutations
 
-- [ ] Implement immutable operation plans
-- [ ] Add plan expiry and live-state invalidation
-- [ ] Add exact-target backup and atomic writes
-- [ ] Implement one local skill install and uninstall path
-- [ ] Verify effective agent state after each operation
-- [ ] Add rollback and verification-failure UI
+- [x] Implement immutable operation plans
+- [x] Add plan expiry and live-state invalidation
+- [x] Add exact-target backup and atomic writes
+- [x] Implement one local skill install and uninstall path
+- [x] Add atomic standalone-skill update
+- [x] Add guarded Claude Code and Codex native plugin paths
+- [x] Add guarded direct Codex MCP add and remove
+- [x] Verify effective agent state after each operation
+- [x] Add rollback and verification-failure UI
 
 Exit criterion: one local capability can be safely installed and removed with
 preview, approval, backup, verification, and rollback.

@@ -2,6 +2,7 @@ import Foundation
 
 public struct CodexAdapter: AgentAdapter {
     public let agent = AgentKind.codex
+    public let userSkillRelativePath = ".codex/skills"
 
     public let discoveryProfile = AgentDiscoveryProfile(
         agent: .codex,

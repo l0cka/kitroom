@@ -95,6 +95,46 @@ final class PersistenceProductTests: XCTestCase {
         XCTAssertEqual(history, [replacement, first])
     }
 
+    func testPersistenceUpsertsOperationRecordByPlanIdentity() async throws {
+        let directory = temporaryDirectory()
+        let store = try SwiftDataKitroomPersistence(
+            storeURL: directory.appendingPathComponent("Kitroom.store")
+        )
+        let createdAt = Date(timeIntervalSince1970: 250)
+        let plan = OperationPlan(
+            kind: .install,
+            risk: .medium,
+            hostID: UUID(),
+            agent: .codex,
+            extensionID: "fixture-skill",
+            scope: .user,
+            basedOnSnapshotAt: createdAt,
+            changes: [
+                PlannedChange(
+                    summary: "Install fixture skill",
+                    target: "/fixture/profile/skills/fixture-skill"
+                )
+            ],
+            createdAt: createdAt
+        )
+        let awaiting = OperationRecord(
+            plan: plan,
+            state: .awaitingApproval,
+            updatedAt: createdAt
+        )
+        let completed = awaiting.transitioned(
+            to: .completed,
+            at: createdAt.addingTimeInterval(2),
+            message: "Verified fixture result."
+        )
+
+        try await store.saveOperationRecord(awaiting)
+        try await store.saveOperationRecord(completed)
+
+        let records = try await store.loadOperationRecords(limit: 10)
+        XCTAssertEqual(records, [completed])
+    }
+
     func testFreshnessTransitionsAreExplicit() {
         let now = Date(timeIntervalSince1970: 10_000)
 

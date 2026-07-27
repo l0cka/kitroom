@@ -21,6 +21,8 @@ public protocol KitroomPersistence: Sendable {
         limit: Int
     ) async throws -> [CatalogueSnapshot]
     func saveCatalogueSnapshot(_ snapshot: CatalogueSnapshot) async throws
+    func loadOperationRecords(limit: Int) async throws -> [OperationRecord]
+    func saveOperationRecord(_ record: OperationRecord) async throws
 }
 
 public actor InMemoryKitroomPersistence: KitroomPersistence {
@@ -28,17 +30,20 @@ public actor InMemoryKitroomPersistence: KitroomPersistence {
     private var discoverySnapshots: [HostDiscoverySnapshot]
     private var inventorySnapshots: [InventorySnapshot]
     private var catalogueSnapshots: [CatalogueSnapshot]
+    private var operationRecords: [OperationRecord]
 
     public init(
         hosts: [ManagedHost] = [],
         discoverySnapshots: [HostDiscoverySnapshot] = [],
         snapshots: [InventorySnapshot] = [],
-        catalogueSnapshots: [CatalogueSnapshot] = []
+        catalogueSnapshots: [CatalogueSnapshot] = [],
+        operationRecords: [OperationRecord] = []
     ) {
         self.hosts = hosts
         self.discoverySnapshots = discoverySnapshots
         self.inventorySnapshots = snapshots
         self.catalogueSnapshots = catalogueSnapshots
+        self.operationRecords = operationRecords
     }
 
     public func loadHosts() -> [ManagedHost] {
@@ -112,6 +117,20 @@ public actor InMemoryKitroomPersistence: KitroomPersistence {
 
     public func saveCatalogueSnapshot(_ snapshot: CatalogueSnapshot) {
         catalogueSnapshots.append(snapshot)
+    }
+
+    public func loadOperationRecords(
+        limit: Int = 200
+    ) -> [OperationRecord] {
+        operationRecords
+            .sorted { $0.updatedAt > $1.updatedAt }
+            .prefix(max(0, limit))
+            .map { $0 }
+    }
+
+    public func saveOperationRecord(_ record: OperationRecord) {
+        operationRecords.removeAll { $0.id == record.id }
+        operationRecords.append(record)
     }
 }
 

@@ -49,6 +49,7 @@ Contains immutable, `Sendable` values:
 - `CatalogueSnapshot`
 - `HostComparisonItem`
 - `OperationPlan`
+- `OperationRecord`
 
 Unknown, partial, and unavailable states are first-class values.
 
@@ -146,6 +147,38 @@ An approval is valid only for the digest of the displayed plan. The digest
 includes the host, agent, capability, inventory time, and exact changes. A live
 state change requires a new plan and approval.
 
+The executable local paths are typed by capability. Kitroom does not expose a
+generic command endpoint:
+
+- standalone-skill install, atomic update, and uninstall for Codex and Claude
+  Code;
+- native Claude Code plugin install, update, enable, disable, and uninstall;
+- native Codex plugin install and uninstall;
+- native add and remove for credential-free HTTPS Codex MCP servers.
+
+Planning requires fresh complete inventory and a verified local host identity.
+Catalogue-backed plugin installs and updates also bind the selected source,
+revision, version, and manifest digest, then refresh the catalogue before
+apply. Install sources for standalone skills are bounded, fully digested, and
+rejected if they contain symbolic links or special files. The engine stages a
+skill beside its exact target before atomic rename. Update uses the platform's
+atomic rename-swap operation and retains the previous directory. Uninstall
+moves the exact directory into a private backup rather than deleting it.
+
+Plugin and MCP engines invoke the agent's discovered executable with a typed
+argument array. They capture the exact configuration file, verify the copied
+backup digest, and never edit an agent's plugin cache. Direct MCP add accepts
+only HTTPS URLs without credentials, query parameters, or fragments.
+Plugin-provided MCP servers cannot use the direct removal path.
+
+Apply performs a fresh agent scan before changing state. The engine verifies
+filesystem or configuration evidence and asks the adapter for fresh effective
+state afterward. Verification failure triggers the operation-specific inverse
+where one exists and restores captured configuration. Claude Code update has
+no version-pinned inverse in the detected CLI, so its plan is high risk and
+states that automatic code rollback may be incomplete. Rollback failure
+remains a separate record and never becomes completed state.
+
 ## Persistence
 
 Kitroom uses a local SwiftData store, as recorded in
@@ -154,7 +187,7 @@ Kitroom uses a local SwiftData store, as recorded in
 - host metadata, excluding SSH private key material;
 - normalized inventory snapshots;
 - catalogue metadata;
-- operation plans and status;
+- operation plans, event timelines, backup state, and status;
 - redacted verification evidence.
 
 The domain remains composed of immutable `Codable` values. SwiftData stores

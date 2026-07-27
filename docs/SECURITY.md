@@ -78,6 +78,25 @@ Before overwriting or removing content:
 Rollback failure is a distinct high-severity result, not a generic operation
 failure.
 
+Local operation paths store backups under Kitroom's private
+application-support directory with owner-only directory permissions and
+owner-readable configuration copies. Copied configuration is re-digested
+before apply. Backups are retained until a future retention control removes
+them explicitly; the current product does not purge them in the background.
+Standalone-skill sources must contain a regular `SKILL.md`, may contain at
+most 1,000 regular files and 50 MiB, and may not contain symbolic links or
+special files.
+
+Plugin operations use the selected agent's native CLI and never edit plugin
+caches. Catalogue-backed installs and updates re-check source metadata before
+apply. A Claude Code update is marked high risk because the current native CLI
+does not expose a version-pinned inverse.
+
+The first direct MCP configuration path is deliberately narrow: Codex, user
+scope, and credential-free HTTPS URLs without query parameters or fragments.
+Plugin-provided MCP servers are excluded. Removal requires a readable
+configuration backup so the original entry can be restored and verified.
+
 ## Diagnostics
 
 Diagnostic exports must be redacted by default. They may include versions,
