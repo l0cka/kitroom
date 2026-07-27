@@ -154,9 +154,12 @@ generic command endpoint:
   Code;
 - native Claude Code plugin install, update, enable, disable, and uninstall;
 - native Codex plugin install and uninstall;
-- native add and remove for credential-free HTTPS Codex MCP servers.
-- remote standalone-skill install for Codex and Claude Code;
-- remote Claude Code plugin enable and disable.
+- native add and remove for credential-free HTTPS Codex MCP servers;
+- remote standalone-skill install, update, and uninstall for Codex and Claude
+  Code;
+- remote Claude Code plugin install, update, enable, disable, and uninstall;
+- remote Codex plugin install and uninstall; and
+- remote add and remove for credential-free HTTPS Codex MCP servers.
 
 Planning requires fresh complete inventory and a verified host identity.
 Catalogue-backed plugin installs and updates also bind the selected source,
@@ -177,10 +180,11 @@ Remote mutation commands use fixed versioned shell envelopes whose dynamic
 values are passed as positional data. Skill content is a bounded ustar stream
 sent through OpenSSH standard input. The envelope checks an embedded SHA-256
 manifest before atomically renaming the staged directory into the agent load
-path. Remote plugin toggles capture and re-digest the exact configuration file
-before invoking the discovered Claude Code executable with typed arguments.
-Connection loss triggers fresh-state recovery; unprovable outcomes remain
-failed or verification failed.
+path. Update and uninstall additionally bind and re-check the existing remote
+tree digest. Remote plugin and MCP paths capture and re-digest the exact
+configuration file before invoking the discovered agent executable with typed
+arguments. Connection loss triggers fresh-state recovery; unprovable outcomes
+remain failed or verification failed.
 
 Plugin and MCP engines invoke the agent's discovered executable with a typed
 argument array. They capture the exact configuration file, verify the copied
@@ -201,7 +205,8 @@ completed state.
 ## Persistence
 
 Kitroom uses a local SwiftData store, as recorded in
-[ADR 0003](decisions/0003-swiftdata-persistence.md), for:
+[ADR 0003](decisions/0003-swiftdata-persistence.md), with migration rules in
+[ADR 0004](decisions/0004-versioned-persistence-envelopes.md), for:
 
 - host metadata, excluding SSH private key material;
 - normalized inventory snapshots;

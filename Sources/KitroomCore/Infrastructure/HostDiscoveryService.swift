@@ -6,6 +6,12 @@ public protocol HostDiscovering: Sendable {
         host: ManagedHost,
         resolvedHost: String?
     ) async -> HostDiscoverySnapshot
+
+    func discover(
+        host: ManagedHost,
+        resolvedHost: String?,
+        using session: any HostSession
+    ) async -> HostDiscoverySnapshot
 }
 
 public struct HostDiscoveryService: HostDiscovering {
@@ -27,12 +33,38 @@ public struct HostDiscoveryService: HostDiscovering {
         host: ManagedHost,
         resolvedHost: String? = nil
     ) async -> HostDiscoverySnapshot {
+        await discoverUsingSessionProvider(
+            host: host,
+            resolvedHost: resolvedHost
+        ) {
+            try await connectionFactory.connect(to: host)
+        }
+    }
+
+    public func discover(
+        host: ManagedHost,
+        resolvedHost: String? = nil,
+        using session: any HostSession
+    ) async -> HostDiscoverySnapshot {
+        await discoverUsingSessionProvider(
+            host: host,
+            resolvedHost: resolvedHost
+        ) {
+            session
+        }
+    }
+
+    private func discoverUsingSessionProvider(
+        host: ManagedHost,
+        resolvedHost: String?,
+        sessionProvider: @Sendable () async throws -> any HostSession
+    ) async -> HostDiscoverySnapshot {
         let attemptedAt = clock.now
         let timer = ContinuousClock()
         let startedAt = timer.now
 
         do {
-            let session = try await connectionFactory.connect(to: host)
+            let session = try await sessionProvider()
             let operatingSystemResult = try await run(
                 session,
                 executable: "/usr/bin/uname",

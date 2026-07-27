@@ -32,24 +32,29 @@ output, and command arguments as untrusted input.
 - Catalogue metadata does not become trusted because two hosts report the same
   package name or version.
 
-## Installation provenance
+## Installation provenance and source policy
 
-Before installation, Kitroom should record:
+Before a catalogue-backed install or update, Kitroom records:
 
 - canonical source URL;
 - publisher identity when available;
 - immutable revision or content digest;
 - declared and detected files;
 - supported agents and platforms;
-- requested executable or network permissions;
-- signature or verification status;
-- review time and reviewer for curated sources.
+- signature or verification status when the source exposes it.
 
 A catalogue listing is not a trust decision.
 
-The current catalogue product reports declared or observed integrity evidence.
-It does not claim signature verification when the source has not supplied and
-verified a digest. Host comparison is advisory and never reconciles state
+The current product requires the user to allow the exact agent-reported
+marketplace reference before it can introduce code. Install and update also
+require a package manifest digest from fresh catalogue state. The allowance is
+agent-and-reference specific, stored with owner-only permissions, and can be
+revoked without changing installed packages.
+
+This is an allowlist and integrity policy, not publisher authentication.
+Kitroom reports declared or observed digest evidence and does not claim
+signature verification when the source has not supplied a verifiable
+signature. Host comparison is advisory and never reconciles state
 automatically.
 
 ## Plan approval
@@ -81,29 +86,37 @@ failure.
 Local operation paths store backups under Kitroom's private
 application-support directory with owner-only directory permissions and
 owner-readable configuration copies. Copied configuration is re-digested
-before apply. Backups are retained until a future retention control removes
-them explicitly; the current product does not purge them in the background.
+before apply. Backups are retained until the user confirms deletion from
+Activity. The local retention service accepts only a completed operation whose
+rollback state is resolved, opens every backup-root component without
+following symbolic links, and deletes only the descriptor-relative directory
+named by the operation identifier. Remote backups are never deleted by that
+local service.
 Standalone-skill sources must contain a regular `SKILL.md`, may contain at
-most 1,000 regular files and 50 MiB, and may not contain symbolic links or
-special files.
+most 1,000 files and directories and 50 MiB, and may not contain symbolic
+links or special files.
 
 Plugin operations use the selected agent's native CLI and never edit plugin
 caches. Catalogue-backed installs and updates re-check source metadata before
 apply. A Claude Code update is marked high risk because the current native CLI
 does not expose a version-pinned inverse.
 
-Remote skill and plugin plans bind a stable host identity and observed agent
-version. Apply repeats host discovery, executable/version checks, target
-permissions, free-space checks for skill staging, and inventory before creating
-approval. The SSH alias is never accepted as host identity.
+Remote skill, plugin, and MCP plans bind a stable host identity and observed
+agent version. Planning and apply use one concrete host session for discovery,
+permission checks, state inspection, and mutation. Apply repeats host
+discovery, executable/version checks, target permissions, free-space checks
+for skill staging, and inventory before creating approval. The SSH alias is
+never accepted as host identity.
 
 Remote operations use fixed, versioned envelopes. Dynamic paths and identifiers
 are positional arguments, not interpolated shell source. Skill archives are
 limited to 1,000 regular files and 50 MiB, reject symbolic links and unsafe
 paths, carry per-file SHA-256 evidence, and enter the load path only through an
-exact atomic rename. Plugin toggles back up and re-digest the exact remote
-configuration before a typed native CLI call. Interrupted operations use fresh
-inventory to distinguish applied, rolled-back, and unprovable state.
+exact atomic rename. Update and uninstall bind the existing remote tree digest
+and re-check it immediately before moving the exact destination. Remote plugin
+and MCP operations back up and re-digest the exact configuration before a
+typed native CLI call. Interrupted operations use fresh inventory to
+distinguish applied, rolled-back, and unprovable state.
 
 The first direct MCP configuration path is deliberately narrow: Codex, user
 scope, and credential-free HTTPS URLs without query parameters or fragments.
@@ -113,15 +126,16 @@ configuration backup so the original entry can be restored and verified.
 ## Diagnostics
 
 Diagnostic exports must be redacted by default. They may include versions,
-paths, origin categories, exit codes, bounded error messages, and content
-digests. They must exclude tokens, environment secrets, SSH private keys,
-credential files, and unrestricted configuration contents.
+origin categories, exit codes, bounded error summaries, and content digests.
+They must exclude local and remote paths, SSH aliases and resolved hosts,
+tokens, environment secrets, SSH private keys, credential files, raw command
+output, and unrestricted configuration contents.
 
-## Future security work
+## Deferred hardening
 
-- Package signature and digest policy
-- Catalogue allowlists
 - Sandboxed static inspection of downloaded content
+- Publisher signature verification when agent-native sources expose durable
+  signature material
 - Declared permission manifests
 - Operation-log integrity
-- Security review of update and rollback behaviour
+- Independent review of update and rollback behaviour

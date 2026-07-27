@@ -809,17 +809,22 @@ or weakening host identity and recovery guarantees.
   discovered agent version.
 - Repeated host discovery, identity, agent-version, executable, permissions,
   inventory, and relevant free-space checks immediately before approval.
-- Added guarded remote standalone-skill installation for Codex and Claude Code.
-  Plans expose the exact destination, versioned staging path, archive size,
-  source digest, backup path, and rollback.
+- Added guarded remote standalone-skill install, update, and uninstall for
+  Codex and Claude Code. Plans expose the exact destination, versioned staging
+  path, archive size, source or existing-tree digest, backup path, and
+  rollback.
 - Built a bounded ustar archive in process, rejected symbolic links, special
   files, and unsafe paths, and embedded a SHA-256 manifest covering each file.
 - Streamed the archive over OpenSSH standard input to a fixed versioned
   envelope. The envelope verifies every digest before an exact atomic rename
   into the agent load path.
-- Added guarded remote Claude Code plugin enable and disable using typed native
-  arguments, an exact remote configuration backup, inverse operation, and
-  digest-verified restoration.
+- Added guarded remote Claude Code plugin install, update, enable, disable, and
+  uninstall, and Codex plugin install and uninstall. Each path uses typed
+  native arguments, an exact remote configuration backup, source-policy
+  preflight where code is introduced, and digest-verified restoration.
+- Added guarded remote Codex MCP add and remove for directly configured,
+  user-scoped, credential-free HTTPS servers. Plugin-provided servers remain
+  excluded.
 - Added a separate remote-target acknowledgement in the review sheet before
   final digest-bound approval.
 - Treated disconnects and missing verification as unknown until fresh inventory
@@ -830,18 +835,23 @@ or weakening host identity and recovery guarantees.
 
 ### Gate evidence
 
-On 2026-07-27, the full suite passed 106 tests. Remote coverage includes
-successful standalone-skill transfer and Claude Code plugin toggle in isolated
-profiles, source and configuration drift, derived identity rejection, unsafe
-paths and archive entries, bounded standard input, fixed typed commands,
-post-apply disconnects, inverse operations, remote backups, verified rollback,
-envelope or rename failure, and unavailable verification.
+On 2026-07-28, the full suite passed 135 tests. Remote coverage includes
+standalone-skill install, update, and uninstall; the supported Claude and Codex
+plugin matrix; direct Codex MCP add and remove; source, destination, and
+configuration drift; derived identity rejection; unsafe paths and archive
+entries; lexical POSIX path validation independent of local filesystem
+resolution; bounded standard input; fixed typed commands; post-apply
+disconnects; inverse operations; remote backups; verified rollback; envelope
+or rename failure; and unavailable verification.
 
 The isolated remote gate is complete. Kitroom still requires a separate
 two-step acknowledgement and approval before a user-selected non-fixture SSH
 host can be changed.
 
 ## M8: Hardening and beta release
+
+**Status:** In progress — implementation hardening is complete; signed release
+validation is pending release credentials.
 
 ### Objective
 
@@ -883,11 +893,46 @@ Turn the proven workflows into a distributable beta.
 | Backup, verification, and rollback evidence | Required | Required |
 | Redacted diagnostics | Required | Required |
 
+### Delivered
+
+- Completed the code and running-app accessibility review, including keyboard
+  shortcuts, text-labelled state, remote-target acknowledgement, destructive
+  confirmation, and release-candidate checks.
+- Added durable operation history, retained-backup visibility, and confirmed
+  deletion of eligible local backups. Descriptor-relative deletion refuses
+  symbolic-link redirection and never acts on remote backups.
+- Added exact marketplace-source allowances and a fresh manifest-digest
+  requirement for catalogue-backed install and update.
+- Bound remote planning and apply to one concrete host session, stable host
+  identity, discovered executable, and agent version.
+- Added bounded remote tree inspection and destination-digest invalidation for
+  skill update and uninstall.
+- Completed the local and remote mutation acceptance matrix for every operation
+  currently reported as supported by the Claude Code and Codex adapters.
+- Added versioned persistence envelopes, backward-compatible decoding for the
+  expanded remote execution specifications, and ADR 0004's migration rules.
+- Added privacy, accessibility, release, and retention documentation.
+- Added a fail-closed release script that requires an exact Developer ID
+  Application identity and Keychain notary profile, verifies signing,
+  notarizes, staples, rebuilds the ZIP, and runs Gatekeeper assessment.
+- Kept update checking manual for the first beta.
+
+### Remaining release evidence
+
+- A Developer ID Application identity and `notarytool` Keychain profile are not
+  available in the current development environment.
+- The signed archive, notarization result, stapled-ticket validation,
+  Gatekeeper assessment, and clean-Mac installation therefore remain open.
+- A formal external cybersecurity scan is not part of this beta run. The
+  repository's safety invariants continue to be exercised by fixture,
+  temporary-profile, transport, parser, and mutation tests.
+
 ### Exit gate
 
 - All required matrix rows pass.
 - Release build is signed, notarized, and accepted by Gatekeeper.
-- No known critical or high-severity security findings remain.
+- The documented safety invariants and regression suite pass against the exact
+  release commit.
 - Documentation describes only implemented behaviour.
 
 ## First implementation slices

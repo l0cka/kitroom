@@ -62,11 +62,7 @@ struct DashboardView: View {
         case .activity:
             ActivityProductView()
         case .settings:
-            FeaturePlaceholder(
-                title: "Settings",
-                systemImage: "gear",
-                message: "Settings are not implemented yet. OpenSSH configuration and credentials remain outside Kitroom."
-            )
+            SettingsProductView()
         }
     }
 }

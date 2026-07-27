@@ -456,7 +456,9 @@ struct CodexMCPAddSheet: View {
 }
 
 private struct OperationRecordCard: View {
+    @EnvironmentObject private var model: AppModel
     let record: OperationRecord
+    @State private var isConfirmingBackupDeletion = false
 
     var body: some View {
         GroupBox {
@@ -497,6 +499,30 @@ private struct OperationRecordCard: View {
                             .font(.caption.monospaced())
                             .textSelection(.enabled)
                     }
+                    if model.canDeleteBackup(for: record) {
+                        Button(
+                            "Delete retained backup…",
+                            role: .destructive
+                        ) {
+                            isConfirmingBackupDeletion = true
+                        }
+                        .buttonStyle(.borderless)
+                        .accessibilityHint(
+                            "Requires confirmation and deletes only this operation's verified local backup."
+                        )
+                    } else if record.plan.hostIdentity != nil,
+                              record.plan.execution?.isRemoteOperation == true {
+                        Text(
+                            "Remote backup retention must be managed on the SSH host. Kitroom does not issue an unreviewed remote delete."
+                        )
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    }
+                } else if let deletedAt = record.backupDeletedAt {
+                    LabeledContent("Backup") {
+                        Text("Deleted \(deletedAt.formatted())")
+                            .foregroundStyle(.secondary)
+                    }
                 }
                 LabeledContent(
                     "Rollback",
@@ -521,6 +547,32 @@ private struct OperationRecordCard: View {
             .padding(.vertical, 4)
         }
         .accessibilityElement(children: .contain)
+        .alert(
+            "Delete retained backup?",
+            isPresented: $isConfirmingBackupDeletion
+        ) {
+            Button("Cancel", role: .cancel) {}
+            Button("Delete backup", role: .destructive) {
+                Task {
+                    await model.deleteBackup(for: record)
+                }
+            }
+        } message: {
+            Text(
+                "This permanently deletes only the exact backup for this completed operation. The activity record remains, but automatic rollback from this backup will no longer be possible."
+            )
+        }
+    }
+}
+
+private extension OperationExecutionSpec {
+    var isRemoteOperation: Bool {
+        switch self {
+        case .remoteSkill, .remotePlugin, .remoteMCP:
+            true
+        case .localSkill, .nativePlugin, .nativeMCP:
+            false
+        }
     }
 }
 
@@ -551,6 +603,11 @@ private extension OperationPlan {
                 ? "Add MCP server"
                 : "Remove MCP server"
         }
+        if case .remoteMCP = execution {
+            return kind == .install
+                ? "Add remote MCP server"
+                : "Remove remote MCP server"
+        }
         if case .nativePlugin = execution {
             return switch kind {
             case .install:
@@ -568,9 +625,20 @@ private extension OperationPlan {
             }
         }
         if case .remotePlugin = execution {
-            return kind == .enable
-                ? "Enable remote plugin"
-                : "Disable remote plugin"
+            return switch kind {
+            case .install:
+                "Install remote plugin"
+            case .update:
+                "Update remote plugin"
+            case .enable:
+                "Enable remote plugin"
+            case .disable:
+                "Disable remote plugin"
+            case .uninstall:
+                "Uninstall remote plugin"
+            case .inspect:
+                "Inspect"
+            }
         }
         return switch kind {
         case .install:
@@ -705,10 +773,31 @@ private func operationTransitionSummary(
         return spec.expectedAfterConfigured
             ? "Absent → configured"
             : "Configured → absent"
-    case .remoteSkill:
-        return "Absent → installed on SSH host"
+    case let .remoteSkill(spec):
+        return switch spec.action {
+        case .install:
+            "Absent → installed on SSH host"
+        case .update:
+            "Installed digest → approved new digest on SSH host"
+        case .uninstall:
+            "Installed → absent on SSH host"
+        }
     case let .remotePlugin(spec):
-        return "\(spec.expectedBeforeState.rawValue.capitalized) → \(spec.expectedAfterState.rawValue)"
+        let before = pluginStateSummary(
+            installed: spec.expectedBeforeInstalled,
+            state: spec.expectedBeforeState,
+            version: spec.expectedBeforeVersion
+        )
+        let after = pluginStateSummary(
+            installed: spec.expectedAfterInstalled,
+            state: spec.expectedAfterState,
+            version: spec.expectedAfterVersion
+        )
+        return "\(before) → \(after) on SSH host"
+    case let .remoteMCP(spec):
+        return spec.expectedAfterConfigured
+            ? "Absent → configured on SSH host"
+            : "Configured → absent on SSH host"
     case nil:
         return "Not specified"
     }

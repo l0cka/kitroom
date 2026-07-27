@@ -230,6 +230,248 @@ final class RemotePluginOperationTests: XCTestCase {
         } catch let error as RemotePluginOperationError {
             XCTAssertEqual(error, .invalidSelector)
         }
+
+        do {
+            _ = try await engine.planClaudeToggle(
+                host: fixture.host,
+                hostIdentity: fixture.identity,
+                agentVersion: "2.1.207",
+                action: .enable,
+                package: fixture.package,
+                source: fixture.source,
+                installation: fixture.installation,
+                executablePath: "/",
+                configurationPath: fixture.configuration.path,
+                remoteHomeDirectory: fixture.remoteHome.path,
+                session: session,
+                basedOnSnapshotAt: fixture.baseline,
+                createdAt: fixture.baseline
+            )
+            XCTFail("Expected a directory executable path to be rejected.")
+        } catch let error as RemotePluginOperationError {
+            XCTAssertEqual(error, .invalidExecutable)
+        }
+    }
+
+    func testRemoteClaudeInstallUpdateAndUninstallUseNativeCommands() async throws {
+        let fixture = try makeFixture(state: .enabled)
+        let session = RecordingRemotePluginSession(host: fixture.host)
+        let engine = RemotePluginOperationEngine()
+        let updatePackage = PackageRecord(
+            id: fixture.package.id,
+            agent: .claude,
+            name: fixture.package.name,
+            sourceID: fixture.source.id,
+            version: "2.0.0",
+            manifestDigest: "updated-fixture-digest"
+        )
+        let updateInstallation = InstallationRecord(
+            id: fixture.installation.id,
+            hostID: fixture.host.id,
+            agent: .claude,
+            packageID: fixture.package.id,
+            scope: .user,
+            origin: .marketplace,
+            state: .enabled,
+            installedVersion: "1.2.3",
+            updateStatus: .updateAvailable,
+            restriction: .agentManaged
+        )
+
+        let install = try await engine.planPluginAction(
+            host: fixture.host,
+            hostIdentity: fixture.identity,
+            agentVersion: "2.1.207",
+            agent: .claude,
+            action: .install,
+            package: fixture.package,
+            source: fixture.source,
+            installation: nil,
+            executablePath: fixture.executablePath,
+            configurationPath: fixture.configuration.path,
+            remoteHomeDirectory: fixture.remoteHome.path,
+            session: session,
+            basedOnSnapshotAt: fixture.baseline,
+            createdAt: fixture.baseline
+        )
+        let update = try await engine.planPluginAction(
+            host: fixture.host,
+            hostIdentity: fixture.identity,
+            agentVersion: "2.1.207",
+            agent: .claude,
+            action: .update,
+            package: updatePackage,
+            source: fixture.source,
+            installation: updateInstallation,
+            executablePath: fixture.executablePath,
+            configurationPath: fixture.configuration.path,
+            remoteHomeDirectory: fixture.remoteHome.path,
+            session: session,
+            basedOnSnapshotAt: fixture.baseline,
+            createdAt: fixture.baseline
+        )
+        let uninstall = try await engine.planPluginAction(
+            host: fixture.host,
+            hostIdentity: fixture.identity,
+            agentVersion: "2.1.207",
+            agent: .claude,
+            action: .uninstall,
+            package: fixture.package,
+            source: fixture.source,
+            installation: fixture.installation,
+            executablePath: fixture.executablePath,
+            configurationPath: fixture.configuration.path,
+            remoteHomeDirectory: fixture.remoteHome.path,
+            session: session,
+            basedOnSnapshotAt: fixture.baseline,
+            createdAt: fixture.baseline
+        )
+
+        XCTAssertEqual(install.kind, .install)
+        XCTAssertEqual(update.kind, .update)
+        XCTAssertEqual(update.risk, .high)
+        XCTAssertEqual(uninstall.kind, .uninstall)
+        for (plan, action) in [
+            (install, "install"),
+            (update, "update"),
+            (uninstall, "uninstall")
+        ] {
+            let result = await applyRecordingPlan(
+                engine: engine,
+                plan: plan,
+                fixture: fixture,
+                session: session,
+                agentVersion: "2.1.207"
+            )
+            XCTAssertEqual(
+                result.state,
+                .completed,
+                result.failure ?? "No failure detail for \(action)"
+            )
+        }
+        let commands = await session.nativeRequests()
+        XCTAssertEqual(
+            commands.suffix(3).map(\.arguments),
+            [
+                ["plugin", "install", "formatter@team", "--scope", "user"],
+                ["plugin", "update", "formatter@team", "--scope", "user"],
+                ["plugin", "uninstall", "formatter@team", "--scope", "user"]
+            ]
+        )
+    }
+
+    func testRemoteCodexInstallAndUninstallUseAddAndRemoveJSON() async throws {
+        let fixture = try makeFixture(state: .enabled)
+        let session = RecordingRemotePluginSession(host: fixture.host)
+        let engine = RemotePluginOperationEngine()
+        let source = CatalogSource(
+            id: "codex:source:team",
+            agent: .codex,
+            name: "team",
+            kind: .marketplace,
+            reference: "https://example.invalid/codex-team.git",
+            capturedAt: fixture.baseline
+        )
+        let package = PackageRecord(
+            id: "codex:package:team:formatter",
+            agent: .codex,
+            name: "formatter",
+            sourceID: source.id,
+            version: "1.2.3",
+            manifestDigest: "codex-fixture-digest"
+        )
+        let installation = InstallationRecord(
+            id: "codex:installation:team:formatter",
+            hostID: fixture.host.id,
+            agent: .codex,
+            packageID: package.id,
+            scope: .user,
+            origin: .marketplace,
+            state: .enabled,
+            installedVersion: "1.2.3",
+            restriction: .agentManaged
+        )
+        let configuration = fixture.remoteHome
+            .appendingPathComponent(".codex/config.toml")
+        try FileManager.default.createDirectory(
+            at: configuration.deletingLastPathComponent(),
+            withIntermediateDirectories: true
+        )
+        try Data("[plugins]\n".utf8).write(to: configuration)
+
+        let install = try await engine.planPluginAction(
+            host: fixture.host,
+            hostIdentity: fixture.identity,
+            agentVersion: "codex-cli 0.145.0",
+            agent: .codex,
+            action: .install,
+            package: package,
+            source: source,
+            installation: nil,
+            executablePath: fixture.executablePath,
+            configurationPath: configuration.path,
+            remoteHomeDirectory: fixture.remoteHome.path,
+            session: session,
+            basedOnSnapshotAt: fixture.baseline,
+            createdAt: fixture.baseline
+        )
+        let uninstall = try await engine.planPluginAction(
+            host: fixture.host,
+            hostIdentity: fixture.identity,
+            agentVersion: "codex-cli 0.145.0",
+            agent: .codex,
+            action: .uninstall,
+            package: package,
+            source: source,
+            installation: installation,
+            executablePath: fixture.executablePath,
+            configurationPath: configuration.path,
+            remoteHomeDirectory: fixture.remoteHome.path,
+            session: session,
+            basedOnSnapshotAt: fixture.baseline,
+            createdAt: fixture.baseline
+        )
+
+        for plan in [install, uninstall] {
+            let result = await applyRecordingPlan(
+                engine: engine,
+                plan: plan,
+                fixture: fixture,
+                session: session,
+                agentVersion: "codex-cli 0.145.0"
+            )
+            XCTAssertEqual(result.state, .completed)
+        }
+        let commands = await session.nativeRequests()
+        XCTAssertEqual(
+            commands.suffix(2).map(\.arguments),
+            [
+                ["plugin", "add", "formatter@team", "--json"],
+                ["plugin", "remove", "formatter@team", "--json"]
+            ]
+        )
+
+        do {
+            _ = try await engine.planPluginAction(
+                host: fixture.host,
+                hostIdentity: fixture.identity,
+                agentVersion: "codex-cli 0.145.0",
+                agent: .codex,
+                action: .update,
+                package: package,
+                source: source,
+                installation: installation,
+                executablePath: fixture.executablePath,
+                configurationPath: configuration.path,
+                remoteHomeDirectory: fixture.remoteHome.path,
+                session: session,
+                basedOnSnapshotAt: fixture.baseline,
+                createdAt: fixture.baseline
+            )
+            XCTFail("Expected remote Codex update to remain unsupported.")
+        } catch let error as RemotePluginOperationError {
+            XCTAssertEqual(error, .unsupportedOperation)
+        }
     }
 
     private func apply(
@@ -246,7 +488,9 @@ final class RemotePluginOperationTests: XCTestCase {
             ),
             preflight: OperationPreflight(
                 inspectedAt: fixture.baseline,
-                targetStateMatchesPlan: true
+                targetStateMatchesPlan: true,
+                verifiedHostIdentity: fixture.identity.value,
+                verifiedAgentVersion: "2.1.207"
             ),
             session: session,
             now: fixture.baseline.addingTimeInterval(2),
@@ -256,6 +500,32 @@ final class RemotePluginOperationTests: XCTestCase {
             verifyRolledBackState: {
                 await session.pluginState() == .disabled
             }
+        )
+    }
+
+    private func applyRecordingPlan(
+        engine: RemotePluginOperationEngine,
+        plan: OperationPlan,
+        fixture: RemotePluginFixture,
+        session: RecordingRemotePluginSession,
+        agentVersion: String
+    ) async -> OperationRecord {
+        await engine.apply(
+            plan: plan,
+            approval: OperationApproval(
+                plan: plan,
+                approvedAt: fixture.baseline.addingTimeInterval(1)
+            ),
+            preflight: OperationPreflight(
+                inspectedAt: fixture.baseline,
+                targetStateMatchesPlan: true,
+                verifiedHostIdentity: fixture.identity.value,
+                verifiedAgentVersion: agentVersion
+            ),
+            session: session,
+            now: fixture.baseline.addingTimeInterval(2),
+            verifyExpectedState: { true },
+            verifyRolledBackState: { false }
         )
     }
 
@@ -285,7 +555,11 @@ final class RemotePluginOperationTests: XCTestCase {
     private func makeFixture(
         state: EffectiveState
     ) throws -> RemotePluginFixture {
-        let root = FileManager.default.temporaryDirectory
+        let temporaryPath = FileManager.default.temporaryDirectory.path
+        let canonicalTemporaryPath = temporaryPath.hasPrefix("/var/")
+            ? "/private" + temporaryPath
+            : temporaryPath
+        let root = URL(fileURLWithPath: canonicalTemporaryPath)
             .appendingPathComponent(
                 "kitroom-remote-plugin-tests-\(UUID().uuidString)",
                 isDirectory: true
@@ -439,5 +713,31 @@ private actor LoopbackRemotePluginSession: HostSession {
 
     func capturedRequests() -> [CommandRequest] {
         requests
+    }
+}
+
+private actor RecordingRemotePluginSession: HostSession {
+    nonisolated let host: ManagedHost
+    private let executor = SystemProcessExecutor()
+    private var requests: [CommandRequest] = []
+
+    init(host: ManagedHost) {
+        self.host = host
+    }
+
+    func execute(_ request: CommandRequest) async throws -> CommandResult {
+        requests.append(request)
+        if request.executable == "/bin/sh" {
+            return try await executor.execute(request)
+        }
+        return CommandResult(
+            standardOutput: "{}",
+            standardError: "",
+            exitCode: 0
+        )
+    }
+
+    func nativeRequests() -> [CommandRequest] {
+        requests.filter { $0.executable != "/bin/sh" }
     }
 }

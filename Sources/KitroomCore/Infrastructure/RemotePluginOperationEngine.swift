@@ -23,7 +23,7 @@ public enum RemotePluginOperationError: LocalizedError, Equatable, Sendable {
         case .agentVersionRequired:
             "A verified remote agent version is required."
         case .unsupportedOperation:
-            "The guarded remote plugin engine supports Claude Code enable and disable operations."
+            "The selected agent does not expose this plugin operation."
         case .invalidSource:
             "The plugin is not bound to the selected native marketplace source."
         case .invalidSelector:
@@ -65,8 +65,43 @@ public actor RemotePluginOperationEngine {
         basedOnSnapshotAt: Date,
         createdAt: Date
     ) async throws -> OperationPlan {
+        try await planPluginAction(
+            host: host,
+            hostIdentity: hostIdentity,
+            agentVersion: agentVersion,
+            agent: .claude,
+            action: action,
+            package: package,
+            source: source,
+            installation: installation,
+            executablePath: executablePath,
+            configurationPath: configurationPath,
+            remoteHomeDirectory: remoteHomeDirectory,
+            session: session,
+            basedOnSnapshotAt: basedOnSnapshotAt,
+            createdAt: createdAt
+        )
+    }
+
+    public func planPluginAction(
+        host: ManagedHost,
+        hostIdentity: HostIdentityEvidence,
+        agentVersion: String,
+        agent: AgentKind,
+        action: NativePluginAction,
+        package: PackageRecord,
+        source: CatalogSource,
+        installation: InstallationRecord?,
+        executablePath: String,
+        configurationPath: String,
+        remoteHomeDirectory: String,
+        session: any HostSession,
+        basedOnSnapshotAt: Date,
+        createdAt: Date
+    ) async throws -> OperationPlan {
         guard host.connection.isRemote,
-              session.host.id == host.id else {
+              session.host.id == host.id,
+              session.host.connection.isRemote else {
             throw RemotePluginOperationError.remoteHostRequired
         }
         guard hostIdentity.kind != .derived,
@@ -76,33 +111,95 @@ public actor RemotePluginOperationEngine {
         guard !agentVersion.isEmpty else {
             throw RemotePluginOperationError.agentVersionRequired
         }
-        guard package.agent == .claude,
-              source.agent == .claude,
-              installation.agent == .claude,
+        guard package.agent == agent,
+              source.agent == agent,
+              installation?.agent == agent || installation == nil,
               package.sourceID == source.id,
               source.kind == .marketplace else {
             throw RemotePluginOperationError.invalidSource
         }
-        guard installation.hostID == host.id,
-              installation.scope == .user,
-              installation.origin == .marketplace,
-              installation.restriction == .agentManaged else {
-            throw RemotePluginOperationError.unsupportedOperation
+        if let installation {
+            guard installation.hostID == host.id,
+                  installation.scope == .user,
+                  installation.origin == .marketplace,
+                  installation.restriction == .agentManaged else {
+                throw RemotePluginOperationError.unsupportedOperation
+            }
         }
-        let before: EffectiveState
-        let after: EffectiveState
+        try validate(action: action, for: agent)
+
+        let expectedBeforeInstalled: Bool
+        let expectedAfterInstalled: Bool
+        let expectedBeforeState: EffectiveState?
+        let expectedAfterState: EffectiveState?
+        let expectedBeforeVersion: String?
+        let expectedAfterVersion: String?
         let kind: OperationKind
-        switch (action, installation.state) {
-        case (.enable, .disabled):
-            before = .disabled
-            after = .enabled
+        switch action {
+        case .install:
+            guard installation == nil else {
+                throw RemotePluginOperationError.unsupportedOperation
+            }
+            expectedBeforeInstalled = false
+            expectedAfterInstalled = true
+            expectedBeforeState = nil
+            expectedAfterState = .enabled
+            expectedBeforeVersion = nil
+            expectedAfterVersion = package.version
+            kind = .install
+        case .update:
+            guard let installation,
+                  let availableVersion = package.version,
+                  installation.updateStatus == .updateAvailable
+                    || (
+                        installation.installedVersion != nil
+                            && installation.installedVersion
+                                != availableVersion
+                    ) else {
+                throw RemotePluginOperationError.unsupportedOperation
+            }
+            expectedBeforeInstalled = true
+            expectedAfterInstalled = true
+            expectedBeforeState = installation.state
+            expectedAfterState = installation.state
+            expectedBeforeVersion = installation.installedVersion
+            expectedAfterVersion = availableVersion
+            kind = .update
+        case .enable:
+            guard let installation,
+                  installation.state == .disabled else {
+                throw RemotePluginOperationError.unsupportedOperation
+            }
+            expectedBeforeInstalled = true
+            expectedAfterInstalled = true
+            expectedBeforeState = .disabled
+            expectedAfterState = .enabled
+            expectedBeforeVersion = installation.installedVersion
+            expectedAfterVersion = installation.installedVersion
             kind = .enable
-        case (.disable, .enabled):
-            before = .enabled
-            after = .disabled
+        case .disable:
+            guard let installation,
+                  installation.state == .enabled else {
+                throw RemotePluginOperationError.unsupportedOperation
+            }
+            expectedBeforeInstalled = true
+            expectedAfterInstalled = true
+            expectedBeforeState = .enabled
+            expectedAfterState = .disabled
+            expectedBeforeVersion = installation.installedVersion
+            expectedAfterVersion = installation.installedVersion
             kind = .disable
-        default:
-            throw RemotePluginOperationError.unsupportedOperation
+        case .uninstall:
+            guard let installation else {
+                throw RemotePluginOperationError.unsupportedOperation
+            }
+            expectedBeforeInstalled = true
+            expectedAfterInstalled = false
+            expectedBeforeState = installation.state
+            expectedAfterState = nil
+            expectedBeforeVersion = installation.installedVersion
+            expectedAfterVersion = nil
+            kind = .uninstall
         }
         let selector = "\(package.name)@\(source.name)"
         try validateSelector(selector)
@@ -115,37 +212,63 @@ public actor RemotePluginOperationEngine {
             session: session
         )
         let planID = UUID()
-        let backupPath = remoteHomeDirectory
-            + "/.kitroom/backups/"
-            + planID.uuidString
-            + "/"
-            + URL(fileURLWithPath: configurationPath).lastPathComponent
-        try validateRemotePath(backupPath)
+        guard let configurationName = RemotePOSIXPath.lastComponent(
+            configurationPath
+        ), let backupPath = RemotePOSIXPath.appending(
+            relativePath:
+                ".kitroom/backups/\(planID.uuidString)/\(configurationName)",
+            to: remoteHomeDirectory
+        ) else {
+            throw RemotePluginOperationError.invalidRemotePath
+        }
         let spec = RemotePluginOperationSpec(
             envelopeVersion: Self.envelopeVersion,
-            agent: .claude,
+            agent: agent,
             action: action,
             selector: selector,
             scope: .user,
             executablePath: executablePath,
             configurationState: configurationState,
             remoteBackupPath: backupPath,
-            expectedBeforeState: before,
-            expectedAfterState: after,
-            expectedVersion: installation.installedVersion
+            expectedBeforeInstalled: expectedBeforeInstalled,
+            expectedAfterInstalled: expectedAfterInstalled,
+            expectedBeforeState: expectedBeforeState,
+            expectedAfterState: expectedAfterState,
+            expectedBeforeVersion: expectedBeforeVersion,
+            expectedAfterVersion: expectedAfterVersion,
+            requiresCataloguePreflight: action == .install
+                || action == .update
         )
+        let risk: OperationRisk = switch action {
+        case .install, .enable:
+            .low
+        case .disable, .uninstall:
+            .medium
+        case .update:
+            .high
+        }
+        var warnings = [
+            "Plugin code and hooks can affect future agent sessions.",
+            "This changes plugin state on the selected SSH host.",
+            "Connection loss is treated as unknown until fresh inventory proves the resulting state."
+        ]
+        if action == .update {
+            warnings.append(
+                "The native CLI does not provide a version-pinned inverse update. Kitroom can restore configuration, but automatic code rollback may be incomplete."
+            )
+        }
         return OperationPlan(
             id: planID,
             kind: kind,
-            risk: action == .enable ? .low : .medium,
+            risk: risk,
             hostID: host.id,
             hostIdentity: hostIdentity.value,
-            agent: .claude,
+            agent: agent,
             agentVersion: agentVersion,
             extensionID: selector,
             scope: .user,
             sourceReference: source.reference ?? source.name,
-            version: package.version ?? installation.installedVersion,
+            version: package.version ?? installation?.installedVersion,
             revision: source.revision,
             contentDigest: package.manifestDigest,
             basedOnSnapshotAt: basedOnSnapshotAt,
@@ -161,22 +284,27 @@ public actor RemotePluginOperationEngine {
                         : "Atomically restore the digest-verified remote backup."
                 ),
                 PlannedChange(
-                    summary: "\(action.rawValue.capitalized) Claude Code plugin \(selector) on the SSH host",
-                    target: "Claude Code user plugin state",
+                    summary: "\(action.rawValue.capitalized) \(agent.displayName) plugin \(selector) on the SSH host",
+                    target: "\(agent.displayName) user plugin state",
                     commandPreview: ([executablePath] + commandArguments(for: spec))
                         .map(Self.displayQuoted)
                         .joined(separator: " "),
-                    rollback: "Run the inverse typed Claude Code operation, restore exact configuration, and verify fresh inventory."
+                    rollback: rollbackDescription(
+                        for: action,
+                        agent: agent
+                    )
                 )
             ],
-            warnings: [
-                "This changes plugin state on the selected SSH host.",
-                "Connection loss is treated as unknown until fresh inventory proves the resulting state."
-            ],
+            warnings: warnings,
             verificationSteps: [
-                "Re-check the stable remote-host identity and Claude Code version.",
+                "Re-check the stable remote-host identity and \(agent.displayName) version.",
                 "Confirm the configuration digest still matches this plan.",
-                "Run fresh Claude Code inventory and confirm \(selector) is \(after.rawValue)."
+                verificationDescription(
+                    selector: selector,
+                    installed: expectedAfterInstalled,
+                    state: expectedAfterState,
+                    version: expectedAfterVersion
+                )
             ],
             execution: .remotePlugin(spec),
             createdAt: createdAt
@@ -224,6 +352,15 @@ public actor RemotePluginOperationEngine {
                 at: now,
                 message: "Fresh remote inventory no longer matches the approved plugin state.",
                 failure: "Remote plugin state changed after planning."
+            )
+        }
+        guard preflight.verifiedHostIdentity == plan.hostIdentity,
+              preflight.verifiedAgentVersion == plan.agentVersion else {
+            return record.transitioned(
+                to: .invalidated,
+                at: now,
+                message: "The concrete remote session was not attested to the approved host identity and agent version.",
+                failure: "Remote target attestation changed or is missing."
             )
         }
         guard session.host.id == plan.hostID,
@@ -311,7 +448,7 @@ public actor RemotePluginOperationEngine {
             let verifying = record.transitioned(
                 to: .verifying,
                 at: now,
-                message: "The remote native command completed. Checking fresh Claude Code inventory."
+                message: "The remote native command completed. Checking fresh \(spec.agent.displayName) inventory."
             )
             guard await verifyExpectedState() else {
                 return await recover(
@@ -328,7 +465,7 @@ public actor RemotePluginOperationEngine {
             return verifying.transitioned(
                 to: .completed,
                 at: now,
-                message: "Fresh remote Claude Code inventory matches the approved plugin state.",
+                message: "Fresh remote \(spec.agent.displayName) inventory matches the approved plugin state.",
                 backupPath: spec.remoteBackupPath,
                 rollbackState: .available
             )
@@ -378,13 +515,15 @@ public actor RemotePluginOperationEngine {
                 verifyRolledBackState: verifyRolledBackState
             )
         }
-        return record.transitioned(
-            to: verificationFailure ? .verificationFailed : .failed,
+        return await rollback(
+            spec: spec,
+            session: session,
+            record: record,
             at: date,
-            message: "\(reason) The remote plugin outcome could not be established.",
-            backupPath: spec.remoteBackupPath,
-            rollbackState: .failed,
-            failure: reason
+            reason: "\(reason) The native plugin state could not be established.",
+            verificationFailure: verificationFailure,
+            runInverse: false,
+            verifyRolledBackState: verifyRolledBackState
         )
     }
 
@@ -399,8 +538,7 @@ public actor RemotePluginOperationEngine {
         verifyRolledBackState: @escaping @Sendable () async -> Bool
     ) async -> OperationRecord {
         var rollbackFailures: [String] = []
-        if runInverse {
-            let inverse = inverseSpec(spec)
+        if runInverse, let inverse = inverseSpec(spec) {
             do {
                 let result = try await session.execute(
                     commandRequest(for: inverse)
@@ -577,46 +715,137 @@ public actor RemotePluginOperationEngine {
     private func commandArguments(
         for spec: RemotePluginOperationSpec
     ) -> [String] {
-        [
-            "plugin",
-            spec.action.rawValue,
-            spec.selector,
-            "--scope",
-            "user"
-        ]
+        switch spec.agent {
+        case .claude:
+            [
+                "plugin",
+                spec.action.rawValue,
+                spec.selector,
+                "--scope",
+                "user"
+            ]
+        case .codex:
+            [
+                "plugin",
+                spec.action == .install ? "add" : "remove",
+                spec.selector,
+                "--json"
+            ]
+        }
     }
 
     private func inverseSpec(
         _ spec: RemotePluginOperationSpec
-    ) -> RemotePluginOperationSpec {
-        RemotePluginOperationSpec(
+    ) -> RemotePluginOperationSpec? {
+        guard let inverseAction = spec.action.inverse else {
+            return nil
+        }
+        return RemotePluginOperationSpec(
             envelopeVersion: spec.envelopeVersion,
             agent: spec.agent,
-            action: spec.action == .enable ? .disable : .enable,
+            action: inverseAction,
             selector: spec.selector,
             scope: spec.scope,
             executablePath: spec.executablePath,
             configurationState: spec.configurationState,
             remoteBackupPath: spec.remoteBackupPath,
+            expectedBeforeInstalled: spec.expectedAfterInstalled,
+            expectedAfterInstalled: spec.expectedBeforeInstalled,
             expectedBeforeState: spec.expectedAfterState,
             expectedAfterState: spec.expectedBeforeState,
-            expectedVersion: spec.expectedVersion
+            expectedBeforeVersion: spec.expectedAfterVersion,
+            expectedAfterVersion: spec.expectedBeforeVersion,
+            requiresCataloguePreflight: false
         )
     }
 
     private func validate(_ spec: RemotePluginOperationSpec) throws {
         guard spec.envelopeVersion == Self.envelopeVersion,
-              spec.agent == .claude,
-              spec.scope == .user,
-              spec.action == .enable || spec.action == .disable,
-              Set([spec.expectedBeforeState, spec.expectedAfterState])
-                == Set<EffectiveState>([.enabled, .disabled]) else {
+              spec.scope == .user else {
             throw RemotePluginOperationError.invalidPlan
+        }
+        try validate(action: spec.action, for: spec.agent)
+        switch spec.action {
+        case .install:
+            guard !spec.expectedBeforeInstalled,
+                  spec.expectedAfterInstalled else {
+                throw RemotePluginOperationError.invalidPlan
+            }
+        case .uninstall:
+            guard spec.expectedBeforeInstalled,
+                  !spec.expectedAfterInstalled else {
+                throw RemotePluginOperationError.invalidPlan
+            }
+        case .update:
+            guard spec.expectedBeforeInstalled,
+                  spec.expectedAfterInstalled,
+                  spec.expectedBeforeVersion
+                    != spec.expectedAfterVersion else {
+                throw RemotePluginOperationError.invalidPlan
+            }
+        case .enable, .disable:
+            guard spec.expectedBeforeInstalled,
+                  spec.expectedAfterInstalled,
+                  let before = spec.expectedBeforeState,
+                  let after = spec.expectedAfterState,
+                  Set<EffectiveState>([before, after])
+                    == Set<EffectiveState>([.enabled, .disabled]) else {
+                throw RemotePluginOperationError.invalidPlan
+            }
         }
         try validateSelector(spec.selector)
         try validateExecutable(spec.executablePath)
         try validateRemotePath(spec.configurationState.path)
         try validateRemotePath(spec.remoteBackupPath)
+    }
+
+    private func validate(
+        action: NativePluginAction,
+        for agent: AgentKind
+    ) throws {
+        switch (agent, action) {
+        case (.claude, _):
+            return
+        case (.codex, .install), (.codex, .uninstall):
+            return
+        case (.codex, .update),
+             (.codex, .enable),
+             (.codex, .disable):
+            throw RemotePluginOperationError.unsupportedOperation
+        }
+    }
+
+    private func rollbackDescription(
+        for action: NativePluginAction,
+        agent: AgentKind
+    ) -> String {
+        switch action {
+        case .update:
+            "Restore captured configuration. \(agent.displayName) does not expose a version-pinned inverse update, so code rollback may require a new reviewed plan."
+        default:
+            "Run the inverse native \(agent.displayName) operation, restore captured configuration, and verify fresh inventory."
+        }
+    }
+
+    private func verificationDescription(
+        selector: String,
+        installed: Bool,
+        state: EffectiveState?,
+        version: String?
+    ) -> String {
+        guard installed else {
+            return "Run fresh inventory and confirm \(selector) is absent."
+        }
+        var details = [
+            "Run fresh inventory and confirm \(selector) is installed"
+        ]
+        if let state {
+            details.append("with state \(state.rawValue)")
+        }
+        if let version {
+            details.append("at version \(version)")
+        }
+        return details.joined(separator: " ") + "."
     }
 
     private func validateSelector(_ value: String) throws {
@@ -639,19 +868,13 @@ public actor RemotePluginOperationEngine {
     }
 
     private func validateExecutable(_ value: String) throws {
-        guard value.hasPrefix("/"),
-              URL(fileURLWithPath: value).standardizedFileURL.path
-                == value else {
+        guard RemotePOSIXPath.lastComponent(value) != nil else {
             throw RemotePluginOperationError.invalidExecutable
         }
     }
 
     private func validateRemotePath(_ value: String) throws {
-        guard value.hasPrefix("/"),
-              !value.contains("\0"),
-              !value.contains("\n"),
-              URL(fileURLWithPath: value).standardizedFileURL.path
-                == value else {
+        guard RemotePOSIXPath.isNormalizedAbsolute(value) else {
             throw RemotePluginOperationError.invalidRemotePath
         }
     }
@@ -707,9 +930,22 @@ public actor RemotePluginOperationEngine {
     expected=$3
     maximum=$4
     backup_dir=${backup%/*}
+    reject_symlink_chain() {
+      check=$1
+      while [ "$check" != / ]; do
+        [ ! -L "$check" ] || return 1
+        next=${check%/*}
+        if [ -z "$next" ] || [ "$next" = "$check" ]; then
+          next=/
+        fi
+        check=$next
+      done
+    }
     [ ! -e "$backup" ]
+    reject_symlink_chain "$backup_dir"
     umask 077
     mkdir -p -m 700 -- "$backup_dir"
+    chmod 700 "$backup_dir"
     if [ "$expected" = absent ]; then
       [ ! -e "$path" ]
     else
@@ -739,7 +975,20 @@ public actor RemotePluginOperationEngine {
     parent=${path%/*}
     base=${path##*/}
     stage=$parent/.$base.kitroom-restore-$$
+    backup_dir=${backup%/*}
+    reject_symlink_chain() {
+      check=$1
+      while [ "$check" != / ]; do
+        [ ! -L "$check" ] || return 1
+        next=${check%/*}
+        if [ -z "$next" ] || [ "$next" = "$check" ]; then
+          next=/
+        fi
+        check=$next
+      done
+    }
     [ -d "$parent" ]
+    reject_symlink_chain "$backup_dir"
     if [ "$expected" = absent ]; then
       if [ -e "$path" ]; then
         [ -f "$path" ]

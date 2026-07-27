@@ -56,23 +56,25 @@ Kitroom is in active early development. The repository currently contains:
   catalogue-backed changes;
 - guarded add and remove for credential-free HTTPS Codex MCP servers, while
   blocking plugin-provided servers from the direct-configuration path;
-- guarded remote standalone-skill installation for Codex and Claude Code, with
-  a bounded digest manifest, explicit staging path, atomic rename, remote
-  backup, and fresh verification;
-- guarded remote Claude Code plugin enable and disable, with exact
-  configuration backup, inverse operation, and disconnect recovery;
+- guarded remote standalone-skill install, update, and uninstall for Codex and
+  Claude Code, with bounded digest evidence, atomic replacement, retained
+  backups, and fresh verification;
+- guarded remote Claude Code plugin install, update, enable, disable, and
+  uninstall, plus Codex plugin install and uninstall, using exact native
+  commands and configuration rollback evidence;
+- guarded remote add and remove for credential-free HTTPS Codex MCP servers;
+- explicit package-source allowances, manifest-digest requirements, operation
+  history, and confirmed local-backup deletion controls;
 - unit tests and project documentation.
 
 The Hosts screen verifies platform details and agent availability. Inventory
 and Catalogue run fresh read-only scans, preserve recent history, and label
 unverified, stale, or incomplete state explicitly. Catalogue can compare
 installed state between two hosts without changing either one. Guarded local
-operations cover standalone skills, selected native plugin operations, and
-credential-free HTTPS Codex MCP servers. Remote operations currently cover
-standalone-skill installation and Claude Code plugin enable or disable. Every
-path uses an expiring plan, fresh preflight inventory, configuration or content
-backup, post-change verification, and a durable activity record. Other remote
-mutation paths remain planned.
+operations cover standalone skills, the agent-supported native plugin matrix,
+and credential-free HTTPS Codex MCP servers on local and SSH-connected hosts.
+Every path uses an expiring plan, fresh preflight inventory, configuration or
+content backup, post-change verification, and a durable activity record.
 
 ## Product principles
 
@@ -89,7 +91,7 @@ mutation paths remain planned.
 6. **Fail closed.** Unknown state is never rendered as healthy, installed, or
    absent.
 
-## Planned initial scope
+## Initial scope
 
 ### Hosts
 
@@ -139,7 +141,10 @@ identical configuration formats.
 See the [Implementation plan](docs/IMPLEMENTATION_PLAN.md),
 [Architecture](docs/ARCHITECTURE.md), [Product](docs/PRODUCT.md),
 [Security](docs/SECURITY.md), [Design guide](docs/DESIGN-GUIDE.md), and
-[Roadmap](docs/ROADMAP.md).
+[Roadmap](docs/ROADMAP.md). Beta preparation is tracked in the
+[Release checklist](docs/RELEASE_CHECKLIST.md), with separate
+[Privacy](docs/PRIVACY.md) and
+[Accessibility](docs/ACCESSIBILITY_AUDIT.md) notes.
 
 ## Requirements
 
@@ -198,9 +203,12 @@ Run the complete local verification:
 ├── docs/
 │   ├── decisions/             # Architecture decision records
 │   ├── ARCHITECTURE.md
+│   ├── ACCESSIBILITY_AUDIT.md
 │   ├── DESIGN-GUIDE.md
 │   ├── IMPLEMENTATION_PLAN.md
+│   ├── PRIVACY.md
 │   ├── PRODUCT.md
+│   ├── RELEASE_CHECKLIST.md
 │   ├── ROADMAP.md
 │   └── SECURITY.md
 └── scripts/                   # Verification and sandbox-probe builders

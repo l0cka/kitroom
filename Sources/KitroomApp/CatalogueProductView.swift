@@ -10,6 +10,7 @@ struct CatalogueProductView: View {
     @State private var leftHostID: ManagedHost.ID?
     @State private var rightHostID: ManagedHost.ID?
     @State private var showMatches = false
+    @State private var sourceTrustConfirmation: SourceTrustConfirmation?
 
     var body: some View {
         VStack(spacing: 0) {
@@ -38,6 +39,45 @@ struct CatalogueProductView: View {
         )
         .task {
             initializeComparisonHosts()
+        }
+        .alert(item: $sourceTrustConfirmation) { confirmation in
+            let reference = (
+                try? PackageSourceTrustPolicy.validatedReference(
+                    for: confirmation.source
+                )
+            ) ?? "Unavailable"
+            return Alert(
+                title: Text(
+                    confirmation.approve
+                        ? "Allow this package source?"
+                        : "Remove this source allowance?"
+                ),
+                message: Text(
+                    confirmation.approve
+                        ? "Future install and update plans may introduce digest-backed code from this exact source. Every package operation still requires its own review and approval."
+                            + "\n\nExact source reference:\n"
+                            + reference
+                        : "This blocks future install and update plans from this source. Installed packages are not changed."
+                            + "\n\nExact source reference:\n"
+                            + reference
+                ),
+                primaryButton: confirmation.approve
+                    ? .default(Text("Allow source")) {
+                        Task {
+                            await model.approvePackageSource(
+                                confirmation.source
+                            )
+                        }
+                    }
+                    : .destructive(Text("Remove allowance")) {
+                        Task {
+                            await model.revokePackageSource(
+                                confirmation.source
+                            )
+                        }
+                    },
+                secondaryButton: .cancel()
+            )
         }
     }
 
@@ -97,6 +137,17 @@ struct CatalogueProductView: View {
                 )
                 .font(.caption)
                 .foregroundStyle(.secondary)
+            }
+            if let message = model.operationMessage,
+               model.pendingOperationPlan == nil {
+                Label(message, systemImage: "info.circle")
+                    .font(.callout)
+                    .padding(10)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(
+                        .secondary.opacity(0.07),
+                        in: RoundedRectangle(cornerRadius: 10)
+                    )
             }
         }
     }
@@ -308,12 +359,52 @@ struct CatalogueProductView: View {
                         Text(source.kind.displayName)
                             .font(.caption)
                             .foregroundStyle(.secondary)
+                        if let reference = try? PackageSourceTrustPolicy
+                            .validatedReference(for: source) {
+                            Text(reference)
+                                .font(.caption2.monospaced())
+                                .foregroundStyle(.secondary)
+                                .lineLimit(2)
+                                .textSelection(.enabled)
+                                .accessibilityLabel(
+                                    "Exact source reference: \(reference)"
+                                )
+                        }
                         if let revision = source.revision {
                             Text(revision)
                                 .font(.caption2.monospaced())
                                 .foregroundStyle(.secondary)
                                 .lineLimit(1)
                         }
+                        Label(
+                            model.isPackageSourceApproved(source)
+                                ? "Allowed for changes"
+                                : "Read-only source",
+                            systemImage: model.isPackageSourceApproved(source)
+                                ? "checkmark.shield"
+                                : "eye"
+                        )
+                        .font(.caption2)
+                        .foregroundStyle(
+                            model.isPackageSourceApproved(source)
+                                ? .green
+                                : .secondary
+                        )
+                        Button(
+                            model.isPackageSourceApproved(source)
+                                ? "Remove allowance…"
+                                : "Allow for changes…"
+                        ) {
+                            sourceTrustConfirmation = SourceTrustConfirmation(
+                                source: source,
+                                approve: !model.isPackageSourceApproved(source)
+                            )
+                        }
+                        .buttonStyle(.borderless)
+                        .disabled(
+                            (try? PackageSourceTrustPolicy
+                                .validatedReference(for: source)) == nil
+                        )
                     }
                     .padding(10)
                     .background(
@@ -636,6 +727,30 @@ private struct CataloguePackageRow: View {
                         "Review the exact native command, configuration "
                             + "backup, rollback limits, and fresh verification."
                     )
+                } else if let source,
+                          let updateStatus = state?.updateStatus,
+                          updateStatus == .notInstalled
+                            || updateStatus == .updateAvailable {
+                    Divider()
+                    if !model.isPackageSourceApproved(source) {
+                        Label(
+                            "Install and update are blocked until this exact source is allowed.",
+                            systemImage: "lock.shield"
+                        )
+                        .font(.caption)
+                        .foregroundStyle(.orange)
+                    } else if !model.packageHasRequiredIntegrity(
+                        package: package,
+                        state: state,
+                        source: source
+                    ) {
+                        Label(
+                            "Install and update are blocked because no package digest evidence was reported.",
+                            systemImage: "exclamationmark.shield"
+                        )
+                        .font(.caption)
+                        .foregroundStyle(.orange)
+                    }
                 }
             }
             .padding(.top, 10)
@@ -680,6 +795,15 @@ private struct CataloguePackageRow: View {
             available = package.version ?? "unknown"
         }
         return "\(installed) → \(available)"
+    }
+}
+
+private struct SourceTrustConfirmation: Identifiable {
+    let source: CatalogSource
+    let approve: Bool
+
+    var id: String {
+        "\(source.id):\(approve)"
     }
 }
 

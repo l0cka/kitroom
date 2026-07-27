@@ -180,6 +180,7 @@ public struct NativeMCPOperationSpec: Codable, Hashable, Sendable {
 
 public struct RemoteSkillOperationSpec: Codable, Hashable, Sendable {
     public let envelopeVersion: Int
+    public let action: LocalSkillAction
     public let skillName: String
     public let localSourcePath: String
     public let remoteDestinationPath: String
@@ -187,18 +188,22 @@ public struct RemoteSkillOperationSpec: Codable, Hashable, Sendable {
     public let createsDestinationRoot: Bool
     public let sourceDigest: String
     public let archiveByteCount: Int
+    public let expectedDestinationDigest: String?
 
     public init(
         envelopeVersion: Int = 1,
+        action: LocalSkillAction = .install,
         skillName: String,
         localSourcePath: String,
         remoteDestinationPath: String,
         remoteBackupPath: String,
         createsDestinationRoot: Bool,
         sourceDigest: String,
-        archiveByteCount: Int
+        archiveByteCount: Int,
+        expectedDestinationDigest: String? = nil
     ) {
         self.envelopeVersion = envelopeVersion
+        self.action = action
         self.skillName = skillName
         self.localSourcePath = localSourcePath
         self.remoteDestinationPath = remoteDestinationPath
@@ -206,6 +211,61 @@ public struct RemoteSkillOperationSpec: Codable, Hashable, Sendable {
         self.createsDestinationRoot = createsDestinationRoot
         self.sourceDigest = sourceDigest
         self.archiveByteCount = archiveByteCount
+        self.expectedDestinationDigest = expectedDestinationDigest
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case envelopeVersion
+        case action
+        case skillName
+        case localSourcePath
+        case remoteDestinationPath
+        case remoteBackupPath
+        case createsDestinationRoot
+        case sourceDigest
+        case archiveByteCount
+        case expectedDestinationDigest
+    }
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        envelopeVersion = try container.decode(
+            Int.self,
+            forKey: .envelopeVersion
+        )
+        action = try container.decodeIfPresent(
+            LocalSkillAction.self,
+            forKey: .action
+        ) ?? .install
+        skillName = try container.decode(String.self, forKey: .skillName)
+        localSourcePath = try container.decode(
+            String.self,
+            forKey: .localSourcePath
+        )
+        remoteDestinationPath = try container.decode(
+            String.self,
+            forKey: .remoteDestinationPath
+        )
+        remoteBackupPath = try container.decode(
+            String.self,
+            forKey: .remoteBackupPath
+        )
+        createsDestinationRoot = try container.decode(
+            Bool.self,
+            forKey: .createsDestinationRoot
+        )
+        sourceDigest = try container.decode(
+            String.self,
+            forKey: .sourceDigest
+        )
+        archiveByteCount = try container.decode(
+            Int.self,
+            forKey: .archiveByteCount
+        )
+        expectedDestinationDigest = try container.decodeIfPresent(
+            String.self,
+            forKey: .expectedDestinationDigest
+        )
     }
 }
 
@@ -218,9 +278,13 @@ public struct RemotePluginOperationSpec: Codable, Hashable, Sendable {
     public let executablePath: String
     public let configurationState: NativePluginConfigurationState
     public let remoteBackupPath: String
-    public let expectedBeforeState: EffectiveState
-    public let expectedAfterState: EffectiveState
-    public let expectedVersion: String?
+    public let expectedBeforeInstalled: Bool
+    public let expectedAfterInstalled: Bool
+    public let expectedBeforeState: EffectiveState?
+    public let expectedAfterState: EffectiveState?
+    public let expectedBeforeVersion: String?
+    public let expectedAfterVersion: String?
+    public let requiresCataloguePreflight: Bool
 
     public init(
         envelopeVersion: Int = 1,
@@ -231,9 +295,13 @@ public struct RemotePluginOperationSpec: Codable, Hashable, Sendable {
         executablePath: String,
         configurationState: NativePluginConfigurationState,
         remoteBackupPath: String,
-        expectedBeforeState: EffectiveState,
-        expectedAfterState: EffectiveState,
-        expectedVersion: String? = nil
+        expectedBeforeInstalled: Bool = true,
+        expectedAfterInstalled: Bool = true,
+        expectedBeforeState: EffectiveState? = nil,
+        expectedAfterState: EffectiveState? = nil,
+        expectedBeforeVersion: String? = nil,
+        expectedAfterVersion: String? = nil,
+        requiresCataloguePreflight: Bool = false
     ) {
         self.envelopeVersion = envelopeVersion
         self.agent = agent
@@ -243,9 +311,135 @@ public struct RemotePluginOperationSpec: Codable, Hashable, Sendable {
         self.executablePath = executablePath
         self.configurationState = configurationState
         self.remoteBackupPath = remoteBackupPath
+        self.expectedBeforeInstalled = expectedBeforeInstalled
+        self.expectedAfterInstalled = expectedAfterInstalled
         self.expectedBeforeState = expectedBeforeState
         self.expectedAfterState = expectedAfterState
-        self.expectedVersion = expectedVersion
+        self.expectedBeforeVersion = expectedBeforeVersion
+        self.expectedAfterVersion = expectedAfterVersion
+        self.requiresCataloguePreflight = requiresCataloguePreflight
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case envelopeVersion
+        case agent
+        case action
+        case selector
+        case scope
+        case executablePath
+        case configurationState
+        case remoteBackupPath
+        case expectedBeforeInstalled
+        case expectedAfterInstalled
+        case expectedBeforeState
+        case expectedAfterState
+        case expectedBeforeVersion
+        case expectedAfterVersion
+        case requiresCataloguePreflight
+    }
+
+    private enum LegacyCodingKeys: String, CodingKey {
+        case expectedVersion
+    }
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        let legacy = try decoder.container(keyedBy: LegacyCodingKeys.self)
+        envelopeVersion = try container.decode(
+            Int.self,
+            forKey: .envelopeVersion
+        )
+        agent = try container.decode(AgentKind.self, forKey: .agent)
+        action = try container.decode(
+            NativePluginAction.self,
+            forKey: .action
+        )
+        selector = try container.decode(String.self, forKey: .selector)
+        scope = try container.decode(InventoryScope.self, forKey: .scope)
+        executablePath = try container.decode(
+            String.self,
+            forKey: .executablePath
+        )
+        configurationState = try container.decode(
+            NativePluginConfigurationState.self,
+            forKey: .configurationState
+        )
+        remoteBackupPath = try container.decode(
+            String.self,
+            forKey: .remoteBackupPath
+        )
+        expectedBeforeInstalled = try container.decodeIfPresent(
+            Bool.self,
+            forKey: .expectedBeforeInstalled
+        ) ?? true
+        expectedAfterInstalled = try container.decodeIfPresent(
+            Bool.self,
+            forKey: .expectedAfterInstalled
+        ) ?? true
+        expectedBeforeState = try container.decodeIfPresent(
+            EffectiveState.self,
+            forKey: .expectedBeforeState
+        )
+        expectedAfterState = try container.decodeIfPresent(
+            EffectiveState.self,
+            forKey: .expectedAfterState
+        )
+        let legacyVersion = try legacy.decodeIfPresent(
+            String.self,
+            forKey: .expectedVersion
+        )
+        expectedBeforeVersion = try container.decodeIfPresent(
+            String.self,
+            forKey: .expectedBeforeVersion
+        ) ?? legacyVersion
+        expectedAfterVersion = try container.decodeIfPresent(
+            String.self,
+            forKey: .expectedAfterVersion
+        ) ?? legacyVersion
+        requiresCataloguePreflight = try container.decodeIfPresent(
+            Bool.self,
+            forKey: .requiresCataloguePreflight
+        ) ?? false
+    }
+}
+
+public struct RemoteMCPOperationSpec: Codable, Hashable, Sendable {
+    public let envelopeVersion: Int
+    public let agent: AgentKind
+    public let action: NativeMCPAction
+    public let serverName: String
+    public let serverURL: String?
+    public let scope: InventoryScope
+    public let executablePath: String
+    public let configurationState: NativePluginConfigurationState
+    public let remoteBackupPath: String
+    public let expectedBeforeConfigured: Bool
+    public let expectedAfterConfigured: Bool
+
+    public init(
+        envelopeVersion: Int = 1,
+        agent: AgentKind,
+        action: NativeMCPAction,
+        serverName: String,
+        serverURL: String? = nil,
+        scope: InventoryScope,
+        executablePath: String,
+        configurationState: NativePluginConfigurationState,
+        remoteBackupPath: String,
+        expectedBeforeConfigured: Bool,
+        expectedAfterConfigured: Bool
+    ) {
+        self.envelopeVersion = envelopeVersion
+        self.agent = agent
+        self.action = action
+        self.serverName = serverName
+        self.serverURL = serverURL
+        self.scope = scope
+        self.executablePath = executablePath
+        self.configurationState = configurationState
+        self.remoteBackupPath = remoteBackupPath
+        self.expectedBeforeConfigured = expectedBeforeConfigured
+        self.expectedAfterConfigured = expectedAfterConfigured
     }
 }
 
@@ -255,18 +449,25 @@ public enum OperationExecutionSpec: Codable, Hashable, Sendable {
     case nativeMCP(NativeMCPOperationSpec)
     case remoteSkill(RemoteSkillOperationSpec)
     case remotePlugin(RemotePluginOperationSpec)
+    case remoteMCP(RemoteMCPOperationSpec)
 }
 
 public struct OperationPreflight: Codable, Hashable, Sendable {
     public let inspectedAt: Date
     public let targetStateMatchesPlan: Bool
+    public let verifiedHostIdentity: String?
+    public let verifiedAgentVersion: String?
 
     public init(
         inspectedAt: Date,
-        targetStateMatchesPlan: Bool
+        targetStateMatchesPlan: Bool,
+        verifiedHostIdentity: String? = nil,
+        verifiedAgentVersion: String? = nil
     ) {
         self.inspectedAt = inspectedAt
         self.targetStateMatchesPlan = targetStateMatchesPlan
+        self.verifiedHostIdentity = verifiedHostIdentity
+        self.verifiedAgentVersion = verifiedAgentVersion
     }
 }
 
@@ -475,13 +676,15 @@ public struct OperationPlan: Identifiable, Codable, Hashable, Sendable {
             return [
                 "remote-skill",
                 String(spec.envelopeVersion),
+                spec.action.rawValue,
                 spec.skillName,
                 spec.localSourcePath,
                 spec.remoteDestinationPath,
                 spec.remoteBackupPath,
                 String(spec.createsDestinationRoot),
                 spec.sourceDigest,
-                String(spec.archiveByteCount)
+                String(spec.archiveByteCount),
+                spec.expectedDestinationDigest ?? ""
             ].joined(separator: "\u{1f}")
         case let .remotePlugin(spec):
             return [
@@ -495,9 +698,29 @@ public struct OperationPlan: Identifiable, Codable, Hashable, Sendable {
                 spec.configurationState.path,
                 spec.configurationState.contentDigest ?? "absent",
                 spec.remoteBackupPath,
-                spec.expectedBeforeState.rawValue,
-                spec.expectedAfterState.rawValue,
-                spec.expectedVersion ?? ""
+                String(spec.expectedBeforeInstalled),
+                String(spec.expectedAfterInstalled),
+                spec.expectedBeforeState?.rawValue ?? "",
+                spec.expectedAfterState?.rawValue ?? "",
+                spec.expectedBeforeVersion ?? "",
+                spec.expectedAfterVersion ?? "",
+                String(spec.requiresCataloguePreflight)
+            ].joined(separator: "\u{1f}")
+        case let .remoteMCP(spec):
+            return [
+                "remote-mcp",
+                String(spec.envelopeVersion),
+                spec.agent.rawValue,
+                spec.action.rawValue,
+                spec.serverName,
+                spec.serverURL ?? "",
+                spec.scope.rawValue,
+                spec.executablePath,
+                spec.configurationState.path,
+                spec.configurationState.contentDigest ?? "absent",
+                spec.remoteBackupPath,
+                String(spec.expectedBeforeConfigured),
+                String(spec.expectedAfterConfigured)
             ].joined(separator: "\u{1f}")
         case nil:
             return ""

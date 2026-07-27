@@ -2,8 +2,8 @@
 .build/
 .swiftpm/
 DerivedData/
+dist/
 xcuserdata/
 *.xcuserstate
 *.xccheckout
 *.moved-aside
-

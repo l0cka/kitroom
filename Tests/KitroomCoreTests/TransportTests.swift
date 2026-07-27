@@ -39,6 +39,36 @@ final class TransportTests: XCTestCase {
         )
     }
 
+    func testRemotePOSIXPathsAreLexicalAndRootSafe() {
+        XCTAssertTrue(
+            RemotePOSIXPath.isNormalizedAbsolute(
+                "/private/var/lib/kitroom"
+            )
+        )
+        XCTAssertTrue(RemotePOSIXPath.isNormalizedAbsolute("/"))
+        XCTAssertFalse(
+            RemotePOSIXPath.isNormalizedAbsolute("/var/../private")
+        )
+        XCTAssertFalse(
+            RemotePOSIXPath.isNormalizedAbsolute("/var//lib")
+        )
+        XCTAssertEqual(
+            RemotePOSIXPath.appending(
+                relativePath: ".kitroom/backups/plan/config.toml",
+                to: "/"
+            ),
+            "/.kitroom/backups/plan/config.toml"
+        )
+        XCTAssertEqual(
+            RemotePOSIXPath.deletingLastComponent("/skill"),
+            "/"
+        )
+        XCTAssertEqual(
+            RemotePOSIXPath.lastComponent("/skills/example"),
+            "example"
+        )
+    }
+
     func testSSHSessionUsesBatchModeAndPreservesHostKeyPolicy() async throws {
         let executor = RecordingProcessExecutor(
             result: CommandResult(

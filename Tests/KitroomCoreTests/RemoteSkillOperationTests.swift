@@ -22,7 +22,9 @@ final class RemoteSkillOperationTests: XCTestCase {
             ),
             preflight: OperationPreflight(
                 inspectedAt: fixture.baseline,
-                targetStateMatchesPlan: true
+                targetStateMatchesPlan: true,
+                verifiedHostIdentity: fixture.identity.value,
+                verifiedAgentVersion: "codex 1.0"
             ),
             session: session,
             now: fixture.baseline.addingTimeInterval(2),
@@ -78,7 +80,9 @@ final class RemoteSkillOperationTests: XCTestCase {
             ),
             preflight: OperationPreflight(
                 inspectedAt: fixture.baseline,
-                targetStateMatchesPlan: true
+                targetStateMatchesPlan: true,
+                verifiedHostIdentity: fixture.identity.value,
+                verifiedAgentVersion: "codex 1.0"
             ),
             session: session,
             now: fixture.baseline.addingTimeInterval(2),
@@ -127,7 +131,9 @@ final class RemoteSkillOperationTests: XCTestCase {
             ),
             preflight: OperationPreflight(
                 inspectedAt: fixture.baseline,
-                targetStateMatchesPlan: true
+                targetStateMatchesPlan: true,
+                verifiedHostIdentity: fixture.identity.value,
+                verifiedAgentVersion: "codex 1.0"
             ),
             session: session,
             now: fixture.baseline.addingTimeInterval(2),
@@ -144,6 +150,257 @@ final class RemoteSkillOperationTests: XCTestCase {
         XCTAssertFalse(
             FileManager.default.fileExists(atPath: destination.path)
         )
+    }
+
+    func testUpdateReplacesExactDestinationAndRetainsPreviousContent() async throws {
+        let fixture = try makeFixture()
+        let session = LoopbackRemoteSession(host: fixture.host)
+        let engine = RemoteSkillOperationEngine()
+        let destination = try installExistingRemoteSkill(
+            fixture: fixture,
+            manifest: "# Previous remote skill\n"
+        )
+        let plan = try await engine.planUpdate(
+            host: fixture.host,
+            hostIdentity: fixture.identity,
+            agent: .codex,
+            agentVersion: "codex 1.0",
+            localSourceDirectory: fixture.source,
+            remoteDestinationRoot: fixture.remoteSkillRoot.path,
+            remoteHomeDirectory: fixture.remoteHome.path,
+            session: session,
+            basedOnSnapshotAt: fixture.baseline,
+            createdAt: fixture.baseline
+        )
+
+        let result = await engine.apply(
+            plan: plan,
+            approval: OperationApproval(
+                plan: plan,
+                approvedAt: fixture.baseline.addingTimeInterval(1)
+            ),
+            preflight: attestedPreflight(fixture),
+            session: session,
+            now: fixture.baseline.addingTimeInterval(2),
+            verifyExpectedState: {
+                (try? String(
+                    contentsOf: destination.appendingPathComponent("SKILL.md"),
+                    encoding: .utf8
+                )) == "# Remote skill\n"
+            },
+            verifyRolledBackState: { false }
+        )
+
+        XCTAssertEqual(result.state, .completed)
+        XCTAssertEqual(result.rollbackState, .available)
+        let backupPath = try XCTUnwrap(result.backupPath)
+        XCTAssertEqual(
+            try String(
+                contentsOf: URL(fileURLWithPath: backupPath)
+                    .appendingPathComponent("SKILL.md"),
+                encoding: .utf8
+            ),
+            "# Previous remote skill\n"
+        )
+    }
+
+    func testUpdateVerificationFailureRestoresPreviousContent() async throws {
+        let fixture = try makeFixture()
+        let session = LoopbackRemoteSession(host: fixture.host)
+        let engine = RemoteSkillOperationEngine()
+        let destination = try installExistingRemoteSkill(
+            fixture: fixture,
+            manifest: "# Previous remote skill\n"
+        )
+        let plan = try await engine.planUpdate(
+            host: fixture.host,
+            hostIdentity: fixture.identity,
+            agent: .codex,
+            agentVersion: "codex 1.0",
+            localSourceDirectory: fixture.source,
+            remoteDestinationRoot: fixture.remoteSkillRoot.path,
+            remoteHomeDirectory: fixture.remoteHome.path,
+            session: session,
+            basedOnSnapshotAt: fixture.baseline,
+            createdAt: fixture.baseline
+        )
+
+        let result = await engine.apply(
+            plan: plan,
+            approval: OperationApproval(
+                plan: plan,
+                approvedAt: fixture.baseline.addingTimeInterval(1)
+            ),
+            preflight: attestedPreflight(fixture),
+            session: session,
+            now: fixture.baseline.addingTimeInterval(2),
+            verifyExpectedState: { false },
+            verifyRolledBackState: {
+                (try? String(
+                    contentsOf: destination.appendingPathComponent("SKILL.md"),
+                    encoding: .utf8
+                )) == "# Previous remote skill\n"
+            }
+        )
+
+        XCTAssertEqual(result.state, .verificationFailed)
+        XCTAssertEqual(result.rollbackState, .succeeded)
+        XCTAssertEqual(
+            try String(
+                contentsOf: destination.appendingPathComponent("SKILL.md"),
+                encoding: .utf8
+            ),
+            "# Previous remote skill\n"
+        )
+    }
+
+    func testUninstallMovesExactDestinationToRetainedBackup() async throws {
+        let fixture = try makeFixture()
+        let session = LoopbackRemoteSession(host: fixture.host)
+        let engine = RemoteSkillOperationEngine()
+        let destination = try installExistingRemoteSkill(
+            fixture: fixture,
+            manifest: "# Installed remote skill\n"
+        )
+        let plan = try await engine.planUninstall(
+            host: fixture.host,
+            hostIdentity: fixture.identity,
+            agent: .codex,
+            agentVersion: "codex 1.0",
+            skillName: destination.lastPathComponent,
+            remoteDestinationPath: destination.path,
+            remoteHomeDirectory: fixture.remoteHome.path,
+            session: session,
+            basedOnSnapshotAt: fixture.baseline,
+            createdAt: fixture.baseline
+        )
+
+        let result = await engine.apply(
+            plan: plan,
+            approval: OperationApproval(
+                plan: plan,
+                approvedAt: fixture.baseline.addingTimeInterval(1)
+            ),
+            preflight: attestedPreflight(fixture),
+            session: session,
+            now: fixture.baseline.addingTimeInterval(2),
+            verifyExpectedState: {
+                !FileManager.default.fileExists(atPath: destination.path)
+            },
+            verifyRolledBackState: { false }
+        )
+
+        XCTAssertEqual(result.state, .completed)
+        XCTAssertFalse(
+            FileManager.default.fileExists(atPath: destination.path)
+        )
+        let backupPath = try XCTUnwrap(result.backupPath)
+        XCTAssertTrue(
+            FileManager.default.fileExists(
+                atPath: URL(fileURLWithPath: backupPath)
+                    .appendingPathComponent("SKILL.md")
+                    .path
+            )
+        )
+    }
+
+    func testUninstallVerificationFailureRestoresExactDestination() async throws {
+        let fixture = try makeFixture()
+        let session = LoopbackRemoteSession(host: fixture.host)
+        let engine = RemoteSkillOperationEngine()
+        let destination = try installExistingRemoteSkill(
+            fixture: fixture,
+            manifest: "# Installed remote skill\n"
+        )
+        let plan = try await engine.planUninstall(
+            host: fixture.host,
+            hostIdentity: fixture.identity,
+            agent: .codex,
+            agentVersion: "codex 1.0",
+            skillName: destination.lastPathComponent,
+            remoteDestinationPath: destination.path,
+            remoteHomeDirectory: fixture.remoteHome.path,
+            session: session,
+            basedOnSnapshotAt: fixture.baseline,
+            createdAt: fixture.baseline
+        )
+
+        let result = await engine.apply(
+            plan: plan,
+            approval: OperationApproval(
+                plan: plan,
+                approvedAt: fixture.baseline.addingTimeInterval(1)
+            ),
+            preflight: attestedPreflight(fixture),
+            session: session,
+            now: fixture.baseline.addingTimeInterval(2),
+            verifyExpectedState: { false },
+            verifyRolledBackState: {
+                FileManager.default.fileExists(
+                    atPath: destination
+                        .appendingPathComponent("SKILL.md")
+                        .path
+                )
+            }
+        )
+
+        XCTAssertEqual(result.state, .verificationFailed)
+        XCTAssertEqual(result.rollbackState, .succeeded)
+        XCTAssertTrue(
+            FileManager.default.fileExists(
+                atPath: destination.appendingPathComponent("SKILL.md").path
+            )
+        )
+    }
+
+    func testRemoteDestinationDigestDriftInvalidatesBeforeMutation() async throws {
+        let fixture = try makeFixture()
+        let session = LoopbackRemoteSession(host: fixture.host)
+        let engine = RemoteSkillOperationEngine()
+        let destination = try installExistingRemoteSkill(
+            fixture: fixture,
+            manifest: "# Previous remote skill\n"
+        )
+        let plan = try await engine.planUpdate(
+            host: fixture.host,
+            hostIdentity: fixture.identity,
+            agent: .codex,
+            agentVersion: "codex 1.0",
+            localSourceDirectory: fixture.source,
+            remoteDestinationRoot: fixture.remoteSkillRoot.path,
+            remoteHomeDirectory: fixture.remoteHome.path,
+            session: session,
+            basedOnSnapshotAt: fixture.baseline,
+            createdAt: fixture.baseline
+        )
+        try Data("# Drifted remote skill\n".utf8).write(
+            to: destination.appendingPathComponent("SKILL.md")
+        )
+
+        let result = await engine.apply(
+            plan: plan,
+            approval: OperationApproval(
+                plan: plan,
+                approvedAt: fixture.baseline.addingTimeInterval(1)
+            ),
+            preflight: attestedPreflight(fixture),
+            session: session,
+            now: fixture.baseline.addingTimeInterval(2),
+            verifyExpectedState: { true },
+            verifyRolledBackState: { true }
+        )
+
+        XCTAssertEqual(result.state, .invalidated)
+        XCTAssertEqual(
+            try String(
+                contentsOf: destination.appendingPathComponent("SKILL.md"),
+                encoding: .utf8
+            ),
+            "# Drifted remote skill\n"
+        )
+        let requests = await session.capturedRequests()
+        XCTAssertEqual(requests.count, 2)
+        XCTAssertTrue(requests.allSatisfy { $0.standardInput == nil })
     }
 
     func testDerivedIdentityAndUnsafeRemotePathAreRejected() async throws {
@@ -193,6 +450,108 @@ final class RemoteSkillOperationTests: XCTestCase {
         }
     }
 
+    func testRemotePathsAreValidatedLexicallyWithoutLocalFilesystemResolution()
+        async throws
+    {
+        let fixture = try makeFixture()
+        let engine = RemoteSkillOperationEngine()
+
+        let plan = try await engine.planInstall(
+            host: fixture.host,
+            hostIdentity: fixture.identity,
+            agent: .codex,
+            agentVersion: "codex 1.0",
+            localSourceDirectory: fixture.source,
+            remoteDestinationRoot: "/private/var/lib/kitroom/skills",
+            remoteHomeDirectory: "/private/var/lib/kitroom",
+            createsDestinationRoot: false,
+            basedOnSnapshotAt: fixture.baseline,
+            createdAt: fixture.baseline
+        )
+        XCTAssertEqual(plan.extensionID, "example-skill")
+
+        let rootHomePlan = try await engine.planInstall(
+            host: fixture.host,
+            hostIdentity: fixture.identity,
+            agent: .codex,
+            agentVersion: "codex 1.0",
+            localSourceDirectory: fixture.source,
+            remoteDestinationRoot: "/skills",
+            remoteHomeDirectory: "/",
+            createsDestinationRoot: false,
+            basedOnSnapshotAt: fixture.baseline,
+            createdAt: fixture.baseline
+        )
+        guard case let .remoteSkill(rootHomeSpec) =
+            rootHomePlan.execution else {
+            return XCTFail("Expected a remote skill plan.")
+        }
+        XCTAssertEqual(
+            rootHomeSpec.remoteDestinationPath,
+            "/skills/example-skill"
+        )
+        XCTAssertTrue(
+            rootHomeSpec.remoteBackupPath.hasPrefix("/.kitroom/backups/")
+        )
+
+        for invalidPath in [
+            "/private/var/lib/../escape",
+            "/private//var/lib/kitroom",
+            "/private/var/lib/kitroom/",
+            "private/var/lib/kitroom",
+        ] {
+            do {
+                _ = try await engine.planInstall(
+                    host: fixture.host,
+                    hostIdentity: fixture.identity,
+                    agent: .codex,
+                    agentVersion: "codex 1.0",
+                    localSourceDirectory: fixture.source,
+                    remoteDestinationRoot: invalidPath,
+                    remoteHomeDirectory: "/private/var/lib/kitroom",
+                    createsDestinationRoot: false,
+                    basedOnSnapshotAt: fixture.baseline,
+                    createdAt: fixture.baseline
+                )
+                XCTFail("Expected \(invalidPath) to be rejected.")
+            } catch let error as RemoteSkillOperationError {
+                XCTAssertEqual(error, .invalidRemotePath)
+            }
+        }
+    }
+
+    func testApplyRequiresAttestationForTheConcreteRemoteSession() async throws {
+        let fixture = try makeFixture()
+        let session = LoopbackRemoteSession(host: fixture.host)
+        let engine = RemoteSkillOperationEngine()
+        let plan = try await makePlan(
+            engine: engine,
+            fixture: fixture
+        )
+
+        let result = await engine.apply(
+            plan: plan,
+            approval: OperationApproval(
+                plan: plan,
+                approvedAt: fixture.baseline.addingTimeInterval(1)
+            ),
+            preflight: OperationPreflight(
+                inspectedAt: fixture.baseline,
+                targetStateMatchesPlan: true,
+                verifiedHostIdentity: "different-machine",
+                verifiedAgentVersion: "codex 1.0"
+            ),
+            session: session,
+            now: fixture.baseline.addingTimeInterval(2),
+            verifyExpectedState: { true },
+            verifyRolledBackState: { true }
+        )
+
+        XCTAssertEqual(result.state, .invalidated)
+        let requests = await session.capturedRequests()
+        XCTAssertTrue(requests.isEmpty)
+    }
+
     func testUnsafeArchivePathIsRejected() async throws {
         let fixture = try makeFixture()
         try Data("unsafe".utf8).write(
@@ -231,7 +590,73 @@ final class RemoteSkillOperationTests: XCTestCase {
             ),
             preflight: OperationPreflight(
                 inspectedAt: fixture.baseline,
-                targetStateMatchesPlan: true
+                targetStateMatchesPlan: true,
+                verifiedHostIdentity: fixture.identity.value,
+                verifiedAgentVersion: "codex 1.0"
+            ),
+            session: session,
+            now: fixture.baseline.addingTimeInterval(2),
+            verifyExpectedState: { true },
+            verifyRolledBackState: { true }
+        )
+
+        XCTAssertEqual(result.state, .invalidated)
+        let requests = await session.capturedRequests()
+        XCTAssertTrue(requests.isEmpty)
+    }
+
+    func testDirectoryEntriesCountTowardArchiveLimit() async throws {
+        let fixture = try makeFixture()
+        let engine = RemoteSkillOperationEngine()
+
+        for index in 0 ... RemoteSkillOperationEngine.maximumFileCount {
+            try FileManager.default.createDirectory(
+                at: fixture.source.appendingPathComponent(
+                    "directory-\(index)",
+                    isDirectory: true
+                ),
+                withIntermediateDirectories: false
+            )
+        }
+
+        do {
+            _ = try await makePlan(
+                engine: engine,
+                fixture: fixture
+            )
+            XCTFail("Expected directory entries to be bounded.")
+        } catch let error as RemoteSkillOperationError {
+            XCTAssertEqual(error, .skillTooLarge)
+        }
+    }
+
+    func testDirectoryOnlyDriftInvalidatesBeforeRemoteTransfer() async throws {
+        let fixture = try makeFixture()
+        let session = LoopbackRemoteSession(host: fixture.host)
+        let engine = RemoteSkillOperationEngine()
+        let plan = try await makePlan(
+            engine: engine,
+            fixture: fixture
+        )
+        try FileManager.default.createDirectory(
+            at: fixture.source.appendingPathComponent(
+                "added-after-planning",
+                isDirectory: true
+            ),
+            withIntermediateDirectories: false
+        )
+
+        let result = await engine.apply(
+            plan: plan,
+            approval: OperationApproval(
+                plan: plan,
+                approvedAt: fixture.baseline.addingTimeInterval(1)
+            ),
+            preflight: OperationPreflight(
+                inspectedAt: fixture.baseline,
+                targetStateMatchesPlan: true,
+                verifiedHostIdentity: fixture.identity.value,
+                verifiedAgentVersion: "codex 1.0"
             ),
             session: session,
             now: fixture.baseline.addingTimeInterval(2),
@@ -261,7 +686,9 @@ final class RemoteSkillOperationTests: XCTestCase {
             ),
             preflight: OperationPreflight(
                 inspectedAt: fixture.baseline,
-                targetStateMatchesPlan: true
+                targetStateMatchesPlan: true,
+                verifiedHostIdentity: fixture.identity.value,
+                verifiedAgentVersion: "codex 1.0"
             ),
             session: session,
             now: fixture.baseline.addingTimeInterval(2),
@@ -291,7 +718,9 @@ final class RemoteSkillOperationTests: XCTestCase {
             ),
             preflight: OperationPreflight(
                 inspectedAt: fixture.baseline,
-                targetStateMatchesPlan: true
+                targetStateMatchesPlan: true,
+                verifiedHostIdentity: fixture.identity.value,
+                verifiedAgentVersion: "codex 1.0"
             ),
             session: session,
             now: fixture.baseline.addingTimeInterval(2),
@@ -322,8 +751,42 @@ final class RemoteSkillOperationTests: XCTestCase {
         )
     }
 
+    private func installExistingRemoteSkill(
+        fixture: RemoteSkillFixture,
+        manifest: String
+    ) throws -> URL {
+        let destination = fixture.remoteSkillRoot
+            .appendingPathComponent("example-skill", isDirectory: true)
+        try FileManager.default.createDirectory(
+            at: destination,
+            withIntermediateDirectories: false
+        )
+        try Data(manifest.utf8).write(
+            to: destination.appendingPathComponent("SKILL.md")
+        )
+        try Data("previous fixture\n".utf8).write(
+            to: destination.appendingPathComponent("notes.txt")
+        )
+        return destination
+    }
+
+    private func attestedPreflight(
+        _ fixture: RemoteSkillFixture
+    ) -> OperationPreflight {
+        OperationPreflight(
+            inspectedAt: fixture.baseline,
+            targetStateMatchesPlan: true,
+            verifiedHostIdentity: fixture.identity.value,
+            verifiedAgentVersion: "codex 1.0"
+        )
+    }
+
     private func makeFixture() throws -> RemoteSkillFixture {
-        let root = FileManager.default.temporaryDirectory
+        let temporaryPath = FileManager.default.temporaryDirectory.path
+        let canonicalTemporaryPath = temporaryPath.hasPrefix("/var/")
+            ? "/private" + temporaryPath
+            : temporaryPath
+        let root = URL(fileURLWithPath: canonicalTemporaryPath)
             .appendingPathComponent(
                 "kitroom-remote-skill-tests-\(UUID().uuidString)",
                 isDirectory: true

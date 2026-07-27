@@ -3,6 +3,59 @@ import Foundation
 import XCTest
 
 final class DomainTests: XCTestCase {
+    func testLegacyRemoteExecutionSpecsDecodeWithSafeDefaults() throws {
+        let legacyPlugin = Data(
+            #"""
+            {
+              "envelopeVersion": 1,
+              "agent": "claude",
+              "action": "enable",
+              "selector": "formatter@team",
+              "scope": "user",
+              "executablePath": "/usr/local/bin/claude",
+              "configurationState": {
+                "path": "/fixture/.claude/settings.json",
+                "contentDigest": "fixture-digest"
+              },
+              "remoteBackupPath": "/fixture/.kitroom/backups/plan/settings.json",
+              "expectedBeforeState": "disabled",
+              "expectedAfterState": "enabled",
+              "expectedVersion": "1.2.3"
+            }
+            """#.utf8
+        )
+        let plugin = try JSONDecoder().decode(
+            RemotePluginOperationSpec.self,
+            from: legacyPlugin
+        )
+        XCTAssertTrue(plugin.expectedBeforeInstalled)
+        XCTAssertTrue(plugin.expectedAfterInstalled)
+        XCTAssertEqual(plugin.expectedBeforeVersion, "1.2.3")
+        XCTAssertEqual(plugin.expectedAfterVersion, "1.2.3")
+        XCTAssertFalse(plugin.requiresCataloguePreflight)
+
+        let legacySkill = Data(
+            #"""
+            {
+              "envelopeVersion": 1,
+              "skillName": "fixture",
+              "localSourcePath": "/fixture/source",
+              "remoteDestinationPath": "/fixture/skills/fixture",
+              "remoteBackupPath": "/fixture/backups/plan/fixture",
+              "createsDestinationRoot": false,
+              "sourceDigest": "fixture-digest",
+              "archiveByteCount": 1024
+            }
+            """#.utf8
+        )
+        let skill = try JSONDecoder().decode(
+            RemoteSkillOperationSpec.self,
+            from: legacySkill
+        )
+        XCTAssertEqual(skill.action, .install)
+        XCTAssertNil(skill.expectedDestinationDigest)
+    }
+
     func testRemoteHostDescriptionPreservesAlias() {
         let host = ManagedHost(
             name: "Build Server",

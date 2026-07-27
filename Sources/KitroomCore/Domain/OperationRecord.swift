@@ -47,6 +47,7 @@ public struct OperationRecord: Identifiable, Codable, Hashable, Sendable {
     public let updatedAt: Date
     public let completedAt: Date?
     public let backupPath: String?
+    public let backupDeletedAt: Date?
     public let rollbackState: OperationRollbackState
     public let verificationDigest: String?
     public let failure: String?
@@ -58,6 +59,7 @@ public struct OperationRecord: Identifiable, Codable, Hashable, Sendable {
         updatedAt: Date,
         completedAt: Date? = nil,
         backupPath: String? = nil,
+        backupDeletedAt: Date? = nil,
         rollbackState: OperationRollbackState = .notRequired,
         verificationDigest: String? = nil,
         failure: String? = nil,
@@ -68,6 +70,7 @@ public struct OperationRecord: Identifiable, Codable, Hashable, Sendable {
         self.updatedAt = updatedAt
         self.completedAt = completedAt
         self.backupPath = backupPath
+        self.backupDeletedAt = backupDeletedAt
         self.rollbackState = rollbackState
         self.verificationDigest = verificationDigest
         self.failure = failure
@@ -89,6 +92,7 @@ public struct OperationRecord: Identifiable, Codable, Hashable, Sendable {
             updatedAt: date,
             completedAt: state.isTerminal ? date : nil,
             backupPath: backupPath ?? self.backupPath,
+            backupDeletedAt: backupDeletedAt,
             rollbackState: rollbackState ?? self.rollbackState,
             verificationDigest: verificationDigest
                 ?? self.verificationDigest,
@@ -98,6 +102,31 @@ public struct OperationRecord: Identifiable, Codable, Hashable, Sendable {
                     state: state,
                     occurredAt: date,
                     message: message
+                )
+            ]
+        )
+    }
+
+    public func deletingRetainedBackup(
+        at date: Date
+    ) -> OperationRecord {
+        OperationRecord(
+            plan: plan,
+            state: state,
+            updatedAt: date,
+            completedAt: completedAt,
+            backupPath: nil,
+            backupDeletedAt: date,
+            rollbackState: rollbackState == .available
+                ? .notRequired
+                : rollbackState,
+            verificationDigest: verificationDigest,
+            failure: failure,
+            events: events + [
+                OperationEvent(
+                    state: state,
+                    occurredAt: date,
+                    message: "The retained local backup was deleted after explicit confirmation."
                 )
             ]
         )

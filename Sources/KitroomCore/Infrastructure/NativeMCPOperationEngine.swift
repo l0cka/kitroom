@@ -51,7 +51,7 @@ public actor NativeMCPOperationEngine {
     private let backupRoot: URL
 
     public init(backupRoot: URL) {
-        self.backupRoot = backupRoot.standardizedFileURL
+        self.backupRoot = VerifiedDirectoryTree.normalizedURL(backupRoot)
     }
 
     public static func live(
@@ -523,23 +523,9 @@ public actor NativeMCPOperationEngine {
         planID: UUID
     ) throws -> ConfigurationBackupBundle {
         let fileManager = FileManager.default
-        try fileManager.createDirectory(
-            at: backupRoot,
-            withIntermediateDirectories: true,
-            attributes: [.posixPermissions: 0o700]
-        )
-        try fileManager.setAttributes(
-            [.posixPermissions: 0o700],
-            ofItemAtPath: backupRoot.path
-        )
-        let directory = backupRoot.appendingPathComponent(
-            planID.uuidString,
-            isDirectory: true
-        )
-        try fileManager.createDirectory(
-            at: directory,
-            withIntermediateDirectories: false,
-            attributes: [.posixPermissions: 0o700]
+        let directory = try VerifiedDirectoryTree.createChildDirectory(
+            named: planID.uuidString,
+            beneath: backupRoot
         )
         guard state.contentDigest != nil else {
             return ConfigurationBackupBundle(

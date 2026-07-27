@@ -693,7 +693,7 @@ private struct InventoryPackageRow: View {
                             }
 
                             if let installation,
-                               model.canPlanLocalSkillUninstall(
+                               model.canPlanSkillUninstall(
                                    capability: capability,
                                    installation: installation,
                                    snapshot: snapshot
@@ -703,7 +703,7 @@ private struct InventoryPackageRow: View {
                                     role: .destructive
                                 ) {
                                     Task {
-                                        await model.planLocalSkillUninstall(
+                                        await model.planSkillUninstall(
                                             capability: capability,
                                             installation: installation,
                                             snapshot: snapshot

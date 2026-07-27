@@ -67,7 +67,7 @@ public actor LocalSkillOperationEngine {
         backupRoot: URL,
         injectedFault: LocalSkillMutationFault = .none
     ) {
-        self.backupRoot = backupRoot.standardizedFileURL
+        self.backupRoot = VerifiedDirectoryTree.normalizedURL(backupRoot)
         self.injectedFault = injectedFault
     }
 
@@ -924,24 +924,10 @@ public actor LocalSkillOperationEngine {
     private func operationBackupDirectory(
         for planID: OperationPlan.ID
     ) throws -> URL {
-        let fileManager = FileManager.default
-        try fileManager.createDirectory(
-            at: backupRoot,
-            withIntermediateDirectories: true,
-            attributes: [.posixPermissions: 0o700]
+        try VerifiedDirectoryTree.createChildDirectory(
+            named: planID.uuidString,
+            beneath: backupRoot
         )
-        try setPrivateDirectoryPermissions(backupRoot)
-        let directory = backupRoot.appendingPathComponent(
-            planID.uuidString,
-            isDirectory: true
-        )
-        try fileManager.createDirectory(
-            at: directory,
-            withIntermediateDirectories: false,
-            attributes: [.posixPermissions: 0o700]
-        )
-        try setPrivateDirectoryPermissions(directory)
-        return directory
     }
 
     private func inspectSkill(at directory: URL) throws -> String {

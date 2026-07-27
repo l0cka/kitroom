@@ -126,6 +126,37 @@ final class ProcessExecutorTests: XCTestCase {
         }
     }
 
+    func testTimeoutIncludesBlockedStandardInputWrite() async {
+        let clock = ContinuousClock()
+        let startedAt = clock.now
+
+        do {
+            _ = try await executor.execute(
+                CommandRequest(
+                    executable: "/bin/sh",
+                    arguments: ["-c", "sleep 5"],
+                    environment: ["PATH": "/usr/bin:/bin"],
+                    standardInput: Data(
+                        repeating: 65,
+                        count: 8 * 1_024 * 1_024
+                    ),
+                    timeout: .milliseconds(150),
+                    maximumOutputBytes: 4_096
+                )
+            )
+            XCTFail("Expected blocked input to honor the timeout")
+        } catch let error as HostSessionError {
+            XCTAssertEqual(error, .timedOut)
+        } catch {
+            XCTFail("Unexpected error: \(error)")
+        }
+
+        XCTAssertLessThan(
+            startedAt.duration(to: clock.now),
+            .seconds(2)
+        )
+    }
+
     func testCancellationStopsChild() async throws {
         let executor = SystemProcessExecutor()
         let task = Task {

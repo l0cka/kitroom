@@ -51,7 +51,7 @@ public actor NativePluginOperationEngine {
     private let backupRoot: URL
 
     public init(backupRoot: URL) {
-        self.backupRoot = backupRoot.standardizedFileURL
+        self.backupRoot = VerifiedDirectoryTree.normalizedURL(backupRoot)
     }
 
     public static func live(
@@ -759,26 +759,10 @@ public actor NativePluginOperationEngine {
     }
 
     private func operationBackupDirectory(for planID: UUID) throws -> URL {
-        let fileManager = FileManager.default
-        try fileManager.createDirectory(
-            at: backupRoot,
-            withIntermediateDirectories: true,
-            attributes: [.posixPermissions: 0o700]
+        try VerifiedDirectoryTree.createChildDirectory(
+            named: planID.uuidString,
+            beneath: backupRoot
         )
-        try fileManager.setAttributes(
-            [.posixPermissions: 0o700],
-            ofItemAtPath: backupRoot.path
-        )
-        let directory = backupRoot.appendingPathComponent(
-            planID.uuidString,
-            isDirectory: true
-        )
-        try fileManager.createDirectory(
-            at: directory,
-            withIntermediateDirectories: false,
-            attributes: [.posixPermissions: 0o700]
-        )
-        return directory
     }
 
     private func commandRequest(

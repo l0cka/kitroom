@@ -15,6 +15,9 @@ struct AppDependencies: Sendable {
     let nativeMCPOperations: NativeMCPOperationEngine?
     let remoteSkillOperations: RemoteSkillOperationEngine?
     let remotePluginOperations: RemotePluginOperationEngine?
+    let remoteMCPOperations: RemoteMCPOperationEngine?
+    let backupRetention: BackupRetentionService?
+    let packageSourceTrust: PackageSourceTrustStore?
     let operationIssue: String?
     let logger: any KitroomLogging
 
@@ -41,6 +44,10 @@ struct AppDependencies: Sendable {
             RemoteSkillOperationEngine()
         let remotePluginOperations: RemotePluginOperationEngine? =
             RemotePluginOperationEngine()
+        let remoteMCPOperations: RemoteMCPOperationEngine? =
+            RemoteMCPOperationEngine()
+        let backupRetention: BackupRetentionService?
+        let packageSourceTrust: PackageSourceTrustStore?
         var operationIssues: [String] = []
         do {
             localSkillOperations = try LocalSkillOperationEngine.live()
@@ -62,6 +69,22 @@ struct AppDependencies: Sendable {
             nativeMCPOperations = try NativeMCPOperationEngine.live()
         } catch {
             nativeMCPOperations = nil
+            operationIssues.append(
+                SensitiveValueRedactor.redact(error.localizedDescription)
+            )
+        }
+        do {
+            backupRetention = try BackupRetentionService.live()
+        } catch {
+            backupRetention = nil
+            operationIssues.append(
+                SensitiveValueRedactor.redact(error.localizedDescription)
+            )
+        }
+        do {
+            packageSourceTrust = try PackageSourceTrustStore.live()
+        } catch {
+            packageSourceTrust = nil
             operationIssues.append(
                 SensitiveValueRedactor.redact(error.localizedDescription)
             )
@@ -89,6 +112,9 @@ struct AppDependencies: Sendable {
             nativeMCPOperations: nativeMCPOperations,
             remoteSkillOperations: remoteSkillOperations,
             remotePluginOperations: remotePluginOperations,
+            remoteMCPOperations: remoteMCPOperations,
+            backupRetention: backupRetention,
+            packageSourceTrust: packageSourceTrust,
             operationIssue: operationIssue,
             logger: SystemKitroomLogger()
         )

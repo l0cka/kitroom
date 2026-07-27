@@ -83,6 +83,28 @@ final class HostDiscoveryTests: XCTestCase {
         XCTAssertEqual(snapshot.issues.count, 1)
     }
 
+    func testExplicitSessionDiscoveryDoesNotOpenAnotherConnection() async {
+        let host = ManagedHost(
+            name: "Remote",
+            connection: .ssh(alias: "fixture")
+        )
+        let session = LossyHostSession(host: host)
+        let service = HostDiscoveryService(
+            connectionFactory: FailingConnectionFactory(
+                error: .authenticationRequired
+            )
+        )
+
+        let snapshot = await service.discover(
+            host: host,
+            resolvedHost: nil,
+            using: session
+        )
+
+        XCTAssertEqual(snapshot.connectionState, .partialDiscovery)
+        XCTAssertEqual(snapshot.platform?.operatingSystem, "Linux")
+    }
+
     func testSSHConfigurationResolverReturnsOnlyBoundedSummary() async throws {
         let executor = StaticProcessExecutor(
             result: success(

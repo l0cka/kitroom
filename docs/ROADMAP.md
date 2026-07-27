@@ -79,25 +79,33 @@ preview, approval, backup, verification, and rollback.
 ## Phase 5: Guarded remote mutations
 
 - [x] Bind approval to verified remote-host identity and agent version
-- [x] Implement remote backups and atomic skill installation
+- [x] Implement remote backups and atomic skill install, update, and uninstall
 - [x] Add connection-loss and partial-application recovery
-- [x] Apply standalone-skill and native-plugin operations to isolated remote
-  profiles
+- [x] Apply the supported standalone-skill, native-plugin, and direct MCP
+  operation matrix to isolated remote profiles
 - [x] Compare post-change state with the approved plan
 
 Exit criterion: the same guarded workflow works on a remote host and reports
 recovery state honestly.
 
-Delivered scope is remote standalone-skill installation and Claude Code plugin
-enable or disable. Remote skill update/uninstall, broader plugin actions, and
-direct MCP management remain in Phase 6.
+Delivered scope is standalone-skill install, update, and uninstall for both
+agents; every Claude Code plugin action; Codex plugin install and uninstall;
+and direct Codex MCP add and remove. Unsupported operations remain hidden by
+runtime capability detection.
 
 ## Phase 6: Product hardening
 
-- [ ] Accessibility and keyboard-navigation audit
+- [x] Accessibility and keyboard-navigation code and running-app audit
 - [ ] Signed and notarized app distribution
-- [ ] Persistent operation history and retention controls
-- [ ] Catalogue integrity and signature policy
-- [ ] Migration strategy for domain and persistence schemas
+- [x] Persistent operation history and retention controls
+- [x] Exact catalogue-source allowances and manifest-digest policy
+- [x] Migration strategy for domain and persistence schemas
+- [x] Privacy, diagnostics, and release documentation
+- [x] Fail-closed release packaging script
 - [ ] Opt-in update notifications
 - [ ] Additional agent adapter evaluation
+
+The first beta intentionally keeps update checking manual. Additional agents
+are post-beta evaluation work. The remaining beta blocker is producing and
+validating an archive with an available Developer ID Application identity and
+notary profile.

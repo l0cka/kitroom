@@ -47,14 +47,15 @@ public struct SystemProcessExecutor: ProcessExecutor {
             )
         }
 
+        let inputTask: Task<Void, Error>?
         if let input = request.standardInput,
            let standardInputPipe {
-            do {
-                try standardInputPipe.fileHandleForWriting.write(
-                    contentsOf: input
-                )
-                try standardInputPipe.fileHandleForWriting.close()
-            } catch {
+            let handle = standardInputPipe.fileHandleForWriting
+            guard Darwin.fcntl(
+                handle.fileDescriptor,
+                F_SETNOSIGPIPE,
+                1
+            ) == 0 else {
                 terminate(process)
                 finishReading(
                     standardOutputPipe,
@@ -63,9 +64,17 @@ public struct SystemProcessExecutor: ProcessExecutor {
                     standardError
                 )
                 throw HostSessionError.transportFailure(
-                    "Could not write bounded process input: \(error.localizedDescription)"
+                    "Could not configure bounded process input."
                 )
             }
+            inputTask = Task.detached {
+                defer {
+                    try? handle.close()
+                }
+                try handle.write(contentsOf: input)
+            }
+        } else {
+            inputTask = nil
         }
 
         do {
@@ -76,6 +85,13 @@ public struct SystemProcessExecutor: ProcessExecutor {
             )
         } catch {
             terminate(process)
+            if let standardInputPipe {
+                try? standardInputPipe.fileHandleForWriting.close()
+            }
+            inputTask?.cancel()
+            if let inputTask {
+                _ = try? await inputTask.value
+            }
             finishReading(
                 standardOutputPipe,
                 standardErrorPipe,
@@ -83,6 +99,21 @@ public struct SystemProcessExecutor: ProcessExecutor {
                 standardError
             )
             throw error
+        }
+        if let inputTask {
+            do {
+                try await inputTask.value
+            } catch {
+                finishReading(
+                    standardOutputPipe,
+                    standardErrorPipe,
+                    standardOutput,
+                    standardError
+                )
+                throw HostSessionError.transportFailure(
+                    "Could not write bounded process input: \(error.localizedDescription)"
+                )
+            }
         }
 
         finishReading(
@@ -149,7 +180,9 @@ public struct SystemProcessExecutor: ProcessExecutor {
             Darwin.kill(process.processIdentifier, SIGKILL)
         }
 
-        process.waitUntilExit()
+        for _ in 0 ..< 100 where process.isRunning {
+            usleep(10_000)
+        }
     }
 
     private func stopReading(_ output: Pipe, _ error: Pipe) {
