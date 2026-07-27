@@ -25,15 +25,13 @@ final class FoundationTests: XCTestCase {
             hostID: host.id,
             agent: .codex,
             capturedAt: Date(timeIntervalSince1970: 1),
-            status: .partial,
-            extensions: []
+            status: .partial
         )
         let replacement = InventorySnapshot(
             hostID: host.id,
             agent: .codex,
             capturedAt: Date(timeIntervalSince1970: 2),
-            status: .complete,
-            extensions: []
+            status: .complete
         )
 
         await store.saveInventorySnapshot(first)

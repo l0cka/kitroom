@@ -1,0 +1,21 @@
+{
+  "marketplaces": [
+    {
+      "name": "bundled",
+      "root": "/fixtures/codex/marketplaces/bundled",
+      "marketplaceSource": {
+        "sourceType": "local",
+        "source": "/fixtures/codex/marketplaces/bundled"
+      }
+    },
+    {
+      "name": "team",
+      "root": "/fixtures/codex/marketplaces/team",
+      "marketplaceSource": {
+        "sourceType": "git",
+        "source": "https://example.invalid/team/plugins",
+        "revision": "abc123"
+      }
+    }
+  ]
+}

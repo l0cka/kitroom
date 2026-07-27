@@ -1,0 +1,31 @@
+{
+  "mcpServers": {
+    "user-docs": {
+      "type": "stdio",
+      "command": "docs-server",
+      "env": {
+        "API_TOKEN": "fixture-secret-never-retain"
+      }
+    },
+    "disabled-user-server": {
+      "type": "http",
+      "url": "https://example.invalid/mcp?token=fixture-secret-never-retain",
+      "disabled": true
+    },
+    "apiToken": "fixture-secret-never-retain"
+  },
+  "projects": {
+    "/fixtures/project": {
+      "mcpServers": {
+        "project-server": {
+          "type": "stdio",
+          "command": "project-server",
+          "args": [
+            "--password",
+            "fixture-secret-never-retain"
+          ]
+        }
+      }
+    }
+  }
+}

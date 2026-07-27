@@ -1,0 +1,13 @@
+[
+  {
+    "name": "team",
+    "source": "github",
+    "repo": "example/plugins",
+    "installLocation": "/fixtures/claude/marketplaces/team"
+  },
+  {
+    "name": "local",
+    "source": "directory",
+    "installLocation": "/fixtures/claude/marketplaces/local"
+  }
+]

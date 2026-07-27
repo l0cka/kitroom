@@ -19,12 +19,12 @@ final class HostDiscoveryTests: XCTestCase {
                 key("/usr/bin/which", ["codex"]): success("/opt/homebrew/bin/codex\n"),
                 key("/opt/homebrew/bin/codex", ["--version"]): success("codex-cli 1.0\n"),
                 key("/usr/bin/which", ["claude"]): failure(1),
-                key("/usr/bin/test", ["-e", "/Users/test/.codex"]): success(),
-                key("/usr/bin/test", ["-r", "/Users/test/.codex"]): success(),
-                key("/usr/bin/test", ["-w", "/Users/test/.codex"]): failure(1),
-                key("/usr/bin/test", ["-e", "/Users/test/.agents"]): failure(1),
-                key("/usr/bin/test", ["-e", "/Users/test/.claude"]): failure(1),
-                key("/usr/bin/test", ["-e", "/Users/test/.ssh"]): failure(1)
+                key("/bin/test", ["-e", "/Users/test/.codex"]): success(),
+                key("/bin/test", ["-r", "/Users/test/.codex"]): success(),
+                key("/bin/test", ["-w", "/Users/test/.codex"]): failure(1),
+                key("/bin/test", ["-e", "/Users/test/.agents"]): failure(1),
+                key("/bin/test", ["-e", "/Users/test/.claude"]): failure(1),
+                key("/bin/test", ["-e", "/Users/test/.ssh"]): failure(1)
             ]
         )
         let service = HostDiscoveryService(

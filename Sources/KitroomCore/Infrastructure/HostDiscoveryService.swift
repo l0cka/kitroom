@@ -220,7 +220,7 @@ public struct HostDiscoveryService: HostDiscovering {
                 .path
             let exists = try? await run(
                 session,
-                executable: "/usr/bin/test",
+                executable: "/bin/test",
                 arguments: ["-e", path]
             )
 
@@ -231,12 +231,12 @@ public struct HostDiscoveryService: HostDiscovering {
 
             let readable = try? await run(
                 session,
-                executable: "/usr/bin/test",
+                executable: "/bin/test",
                 arguments: ["-r", path]
             )
             let writable = try? await run(
                 session,
-                executable: "/usr/bin/test",
+                executable: "/bin/test",
                 arguments: ["-w", path]
             )
 

@@ -38,9 +38,12 @@ is supported by recorded sandbox evidence.
 - [x] Discover local platform and home-directory context
 - [x] Discover a configured remote host's platform and home-directory context
 - [x] Capability-detect installed Claude and Codex versions
-- [ ] Build fixture-based parsers before using live command output
+- [x] Build fixture-based parsers before using live command output
+- [x] Inventory installed plugins, skills, MCP servers, and plugin components
+- [x] Preserve scope, origin, effective state, freshness, and evidence links
+- [x] Inspect optional repository layers from a selected working directory
 - [ ] Render complete, partial, unavailable, and stale inventory states
-- [ ] Add redacted diagnostics
+- [x] Add redacted diagnostics
 
 Exit criterion: Kitroom accurately inventories a local machine and a configured
 remote host without changing either one.

@@ -16,7 +16,6 @@
 		C00000000000000000000007 /* KitroomCore.framework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = B00000000000000000000007 /* KitroomCore.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 		C00000000000000000000008 /* AppDependencies.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00000000000000000000008 /* AppDependencies.swift */; };
 		C00000000000000000000010 /* AgentKind.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00000000000000000000010 /* AgentKind.swift */; };
-		C00000000000000000000011 /* ManagedExtension.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00000000000000000000011 /* ManagedExtension.swift */; };
 		C00000000000000000000012 /* ManagedHost.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00000000000000000000012 /* ManagedHost.swift */; };
 		C00000000000000000000013 /* InventorySnapshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00000000000000000000013 /* InventorySnapshot.swift */; };
 		C00000000000000000000014 /* OperationPlan.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00000000000000000000014 /* OperationPlan.swift */; };
@@ -38,6 +37,12 @@
 		C00000000000000000000030 /* RemoteCommandEncoder.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00000000000000000000030 /* RemoteCommandEncoder.swift */; };
 		C00000000000000000000031 /* SSHConfigurationResolver.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00000000000000000000031 /* SSHConfigurationResolver.swift */; };
 		C00000000000000000000032 /* SSHHostSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00000000000000000000032 /* SSHHostSession.swift */; };
+		C00000000000000000000033 /* AdapterCapabilityReport.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00000000000000000000033 /* AdapterCapabilityReport.swift */; };
+		C00000000000000000000034 /* ExtensionInventory.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00000000000000000000034 /* ExtensionInventory.swift */; };
+		C00000000000000000000035 /* InventorySupport.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00000000000000000000035 /* InventorySupport.swift */; };
+		C00000000000000000000036 /* ClaudeInventoryParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00000000000000000000036 /* ClaudeInventoryParser.swift */; };
+		C00000000000000000000037 /* ClaudeMCPConfigurationParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00000000000000000000037 /* ClaudeMCPConfigurationParser.swift */; };
+		C00000000000000000000038 /* CodexInventoryParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00000000000000000000038 /* CodexInventoryParser.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -74,7 +79,6 @@
 		B00000000000000000000007 /* KitroomCore.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = KitroomCore.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		B00000000000000000000008 /* AppDependencies.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDependencies.swift; sourceTree = "<group>"; };
 		B00000000000000000000010 /* AgentKind.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AgentKind.swift; sourceTree = "<group>"; };
-		B00000000000000000000011 /* ManagedExtension.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ManagedExtension.swift; sourceTree = "<group>"; };
 		B00000000000000000000012 /* ManagedHost.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ManagedHost.swift; sourceTree = "<group>"; };
 		B00000000000000000000013 /* InventorySnapshot.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InventorySnapshot.swift; sourceTree = "<group>"; };
 		B00000000000000000000014 /* OperationPlan.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OperationPlan.swift; sourceTree = "<group>"; };
@@ -96,6 +100,12 @@
 		B00000000000000000000030 /* RemoteCommandEncoder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RemoteCommandEncoder.swift; sourceTree = "<group>"; };
 		B00000000000000000000031 /* SSHConfigurationResolver.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SSHConfigurationResolver.swift; sourceTree = "<group>"; };
 		B00000000000000000000032 /* SSHHostSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SSHHostSession.swift; sourceTree = "<group>"; };
+		B00000000000000000000033 /* AdapterCapabilityReport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AdapterCapabilityReport.swift; sourceTree = "<group>"; };
+		B00000000000000000000034 /* ExtensionInventory.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExtensionInventory.swift; sourceTree = "<group>"; };
+		B00000000000000000000035 /* InventorySupport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InventorySupport.swift; sourceTree = "<group>"; };
+		B00000000000000000000036 /* ClaudeInventoryParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClaudeInventoryParser.swift; sourceTree = "<group>"; };
+		B00000000000000000000037 /* ClaudeMCPConfigurationParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClaudeMCPConfigurationParser.swift; sourceTree = "<group>"; };
+		B00000000000000000000038 /* CodexInventoryParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CodexInventoryParser.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -169,10 +179,11 @@
 		A00000000000000000000007 /* Domain */ = {
 			isa = PBXGroup;
 			children = (
+				B00000000000000000000033 /* AdapterCapabilityReport.swift */,
 				B00000000000000000000010 /* AgentKind.swift */,
+				B00000000000000000000034 /* ExtensionInventory.swift */,
 				B00000000000000000000027 /* HostDiscovery.swift */,
 				B00000000000000000000013 /* InventorySnapshot.swift */,
-				B00000000000000000000011 /* ManagedExtension.swift */,
 				B00000000000000000000012 /* ManagedHost.swift */,
 				B00000000000000000000020 /* OperationApproval.swift */,
 				B00000000000000000000014 /* OperationPlan.swift */,
@@ -185,6 +196,7 @@
 			children = (
 				B00000000000000000000015 /* AgentAdapter.swift */,
 				B00000000000000000000021 /* AgentAdapterRegistry.swift */,
+				B00000000000000000000035 /* InventorySupport.swift */,
 				A00000000000000000000009 /* Claude */,
 				A0000000000000000000000A /* Codex */,
 			);
@@ -195,6 +207,8 @@
 			isa = PBXGroup;
 			children = (
 				B00000000000000000000016 /* ClaudeAdapter.swift */,
+				B00000000000000000000036 /* ClaudeInventoryParser.swift */,
+				B00000000000000000000037 /* ClaudeMCPConfigurationParser.swift */,
 			);
 			path = Claude;
 			sourceTree = "<group>";
@@ -203,6 +217,7 @@
 			isa = PBXGroup;
 			children = (
 				B00000000000000000000017 /* CodexAdapter.swift */,
+				B00000000000000000000038 /* CodexInventoryParser.swift */,
 			);
 			path = Codex;
 			sourceTree = "<group>";
@@ -329,21 +344,26 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				C00000000000000000000033 /* AdapterCapabilityReport.swift in Sources */,
 				C00000000000000000000010 /* AgentKind.swift in Sources */,
 				C00000000000000000000015 /* AgentAdapter.swift in Sources */,
 				C00000000000000000000021 /* AgentAdapterRegistry.swift in Sources */,
 				C00000000000000000000016 /* ClaudeAdapter.swift in Sources */,
+				C00000000000000000000036 /* ClaudeInventoryParser.swift in Sources */,
+				C00000000000000000000037 /* ClaudeMCPConfigurationParser.swift in Sources */,
 				C00000000000000000000017 /* CodexAdapter.swift in Sources */,
+				C00000000000000000000038 /* CodexInventoryParser.swift in Sources */,
+				C00000000000000000000034 /* ExtensionInventory.swift in Sources */,
 				C00000000000000000000018 /* HostConnectionFactory.swift in Sources */,
 				C00000000000000000000027 /* HostDiscovery.swift in Sources */,
 				C00000000000000000000028 /* HostDiscoveryService.swift in Sources */,
 				C00000000000000000000019 /* HostSession.swift in Sources */,
 				C00000000000000000000013 /* InventorySnapshot.swift in Sources */,
+				C00000000000000000000035 /* InventorySupport.swift in Sources */,
 				C00000000000000000000022 /* KitroomClock.swift in Sources */,
 				C00000000000000000000024 /* KitroomLogging.swift in Sources */,
 				C00000000000000000000023 /* KitroomPersistence.swift in Sources */,
 				C00000000000000000000029 /* LocalHostSession.swift in Sources */,
-				C00000000000000000000011 /* ManagedExtension.swift in Sources */,
 				C00000000000000000000012 /* ManagedHost.swift in Sources */,
 				C00000000000000000000020 /* OperationApproval.swift in Sources */,
 				C00000000000000000000025 /* OperationApprovalStore.swift in Sources */,

@@ -9,11 +9,15 @@ final class AppModel: ObservableObject {
     @Published private(set) var hosts: [ManagedHost]
     @Published private(set) var discoveryByHost: [ManagedHost.ID: HostDiscoverySnapshot] = [:]
     @Published private(set) var resolvedHostByID: [ManagedHost.ID: String] = [:]
+    @Published private(set) var inventoryByKey: [InventoryKey: InventorySnapshot] = [:]
+    @Published private(set) var inventoryScanningHostIDs: Set<ManagedHost.ID> = []
+    @Published var projectDirectoryByHost: [ManagedHost.ID: String] = [:]
 
     let dependencies: AppDependencies
 
     private var hasStarted = false
     private var scanTasks: [ManagedHost.ID: Task<Void, Never>] = [:]
+    private var inventoryTasks: [ManagedHost.ID: Task<Void, Never>] = [:]
 
     init(
         hosts: [ManagedHost] = [ManagedHost(name: "This Mac", connection: .local)],
@@ -34,6 +38,21 @@ final class AppModel: ObservableObject {
 
     func discovery(for host: ManagedHost) -> HostDiscoverySnapshot? {
         discoveryByHost[host.id]
+    }
+
+    func inventory(
+        for host: ManagedHost,
+        agent: AgentKind
+    ) -> InventorySnapshot? {
+        inventoryByKey[InventoryKey(hostID: host.id, agent: agent)]
+    }
+
+    func projectDirectory(for host: ManagedHost) -> String {
+        projectDirectoryByHost[host.id] ?? ""
+    }
+
+    func setProjectDirectory(_ value: String, for host: ManagedHost) {
+        projectDirectoryByHost[host.id] = value
     }
 
     func start() async {
@@ -60,6 +79,17 @@ final class AppModel: ObservableObject {
                 hosts = persistedHosts
                 selectedHostID = persistedHosts.first?.id
             }
+
+            let persistedSnapshots = try await dependencies.persistence
+                .loadInventorySnapshots()
+            inventoryByKey = Dictionary(
+                uniqueKeysWithValues: persistedSnapshots.map {
+                    (
+                        InventoryKey(hostID: $0.hostID, agent: $0.agent),
+                        $0
+                    )
+                }
+            )
         } catch {
             dependencies.logger.record(
                 KitroomLogEvent(
@@ -186,6 +216,82 @@ final class AppModel: ObservableObject {
     func cancelScan(_ host: ManagedHost) {
         scanTasks[host.id]?.cancel()
     }
+
+    func scanInventory(_ host: ManagedHost) {
+        guard inventoryTasks[host.id] == nil else {
+            return
+        }
+
+        inventoryScanningHostIDs.insert(host.id)
+        inventoryTasks[host.id] = Task { [weak self] in
+            guard let self else {
+                return
+            }
+
+            do {
+                let session = try await dependencies.hostConnectionFactory
+                    .connect(to: host)
+                let context = InventoryContext(
+                    workingDirectory: projectDirectory(for: host)
+                )
+
+                for agent in dependencies.adapterRegistry.supportedAgents {
+                    guard !Task.isCancelled,
+                          let adapter = dependencies.adapterRegistry.adapter(for: agent)
+                    else {
+                        break
+                    }
+
+                    let snapshot = try await adapter.inspect(
+                        context: context,
+                        using: session
+                    )
+                    guard !Task.isCancelled else {
+                        break
+                    }
+                    inventoryByKey[
+                        InventoryKey(hostID: host.id, agent: agent)
+                    ] = snapshot
+                    try await dependencies.persistence.saveInventorySnapshot(
+                        snapshot
+                    )
+                }
+            } catch {
+                let detail = SensitiveValueRedactor.redact(
+                    error.localizedDescription
+                )
+                for agent in dependencies.adapterRegistry.supportedAgents {
+                    let snapshot = InventorySnapshot(
+                        hostID: host.id,
+                        agent: agent,
+                        capturedAt: dependencies.clock.now,
+                        status: .unavailable,
+                        issues: [
+                            InventoryIssue(
+                                summary: "Inventory scan failed",
+                                detail: detail
+                            )
+                        ]
+                    )
+                    inventoryByKey[
+                        InventoryKey(hostID: host.id, agent: agent)
+                    ] = snapshot
+                }
+            }
+
+            inventoryScanningHostIDs.remove(host.id)
+            inventoryTasks[host.id] = nil
+        }
+    }
+
+    func cancelInventoryScan(_ host: ManagedHost) {
+        inventoryTasks[host.id]?.cancel()
+    }
+}
+
+struct InventoryKey: Hashable {
+    let hostID: ManagedHost.ID
+    let agent: AgentKind
 }
 
 enum HostSetupError: LocalizedError {

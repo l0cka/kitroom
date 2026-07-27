@@ -16,7 +16,7 @@
 Kitroom is an open-source native macOS project for managing the skills,
 plugins, MCP servers, and configuration used by coding agents. It is designed
 to work on the Mac running Kitroom and on remote macOS or Linux hosts over
-OpenSSH. Claude Code and Codex are the first planned integrations.
+OpenSSH. Claude Code and Codex are the first integrations.
 
 The name comes from the room where equipment is stored, checked, maintained,
 and issued. Kitroom treats skills, plugins, and MCP servers as equipment:
@@ -30,18 +30,22 @@ Kitroom is in active early development. The repository currently contains:
 - a tracked Xcode macOS application with a provisional app icon;
 - a native sidebar shell for hosts, inventory, catalogue, activity, and
   settings;
-- domain models for hosts, agents, extensions, inventory, and operations;
+- normalized package, capability, installation, inventory, and evidence models;
 - bounded local process execution and read-only OpenSSH transport;
 - local and remote host discovery with explicit failure states;
 - OpenSSH-alias setup that preserves the user's keys and host trust;
-- initial Codex and Claude adapter boundaries;
+- read-only Codex and Claude inventories for plugins, skills, MCP servers,
+  configuration state, and plugin-provided components;
+- optional project-aware scanning from a selected working directory to its Git
+  root;
+- per-item scope, origin, effective state, freshness, and evidence status;
 - an approval-first operation model;
 - unit tests and project documentation.
 
-Extension inventory and mutating operations are deliberately not wired up yet.
-The Hosts screen can verify platform details and agent availability, and labels
-unverified or incomplete state explicitly rather than presenting placeholder
-data as live state.
+The Hosts screen verifies platform details and agent availability. The
+Inventory screen runs fresh read-only scans and labels unverified or incomplete
+state explicitly. Persistence, catalogue comparison, and mutating operations
+are not implemented yet.
 
 ## Product principles
 
@@ -159,7 +163,7 @@ Run the complete local verification:
 │   │   └── Resources/         # App icon, logo, and color assets
 │   └── KitroomCore/
 │       ├── Adapters/          # Claude and Codex boundaries
-│       ├── Domain/            # Hosts, extensions, inventory, operations
+│       ├── Domain/            # Hosts, packages, capabilities, inventory, operations
 │       └── Infrastructure/    # Local/SSH host-session contracts
 ├── Tests/
 │   ├── KitroomCoreTests/

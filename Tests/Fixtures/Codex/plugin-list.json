@@ -1,0 +1,42 @@
+{
+  "installed": [
+    {
+      "pluginId": "tools@bundled",
+      "name": "tools",
+      "marketplaceName": "bundled",
+      "version": "1.2.3",
+      "installed": true,
+      "enabled": true,
+      "source": {
+        "source": "local",
+        "path": "/fixtures/codex/plugins/tools"
+      },
+      "marketplaceSource": {
+        "sourceType": "local",
+        "source": "/fixtures/codex/marketplaces/bundled"
+      },
+      "installPolicy": "AVAILABLE",
+      "futureField": {
+        "ignored": true
+      }
+    },
+    {
+      "pluginId": "review@team",
+      "name": "review",
+      "marketplaceName": "team",
+      "version": "abc123",
+      "installed": true,
+      "enabled": false,
+      "source": {
+        "source": "local",
+        "path": "/fixtures/codex/plugins/review"
+      },
+      "marketplaceSource": {
+        "sourceType": "git",
+        "source": "https://example.invalid/team/plugins"
+      },
+      "installPolicy": "MANAGED"
+    }
+  ],
+  "available": []
+}

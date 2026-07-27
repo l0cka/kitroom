@@ -1,6 +1,6 @@
 # Kitroom implementation plan
 
-- **Status:** Proposed execution plan
+- **Status:** In progress
 - **Created:** 2026-07-27
 - **Target:** Kitroom 1.0 for macOS
 - **Initial agents:** Codex and Claude Code
@@ -328,6 +328,8 @@ classification, and connection loss during discovery.
 
 ## M3: Codex and Claude inventory adapters
 
+**Status:** Complete
+
 ### Objective
 
 Produce normalized, evidence-backed inventories from each agent on each host.
@@ -421,6 +423,43 @@ not be offered for those entries.
   and at least one SSH test host.
 - Every displayed item has scope, origin, freshness, and evidence status.
 - Unknown and partial results are plainly distinguishable.
+
+### Delivered
+
+- Replaced the flat scaffold extension model with separate catalogue,
+  package, capability, installation, evidence, and adapter-capability records.
+- Added independently versioned Codex and Claude parsers with sanitized
+  fixtures, forward-compatible field handling, and redacted parser failures.
+- Added runtime capability matrices derived from the selected host's CLI.
+- Inventoried agent-native plugin state, marketplaces, directly configured MCP
+  servers, standalone and legacy skills, bundled/system skills where exposed,
+  and plugin-provided skills, agents, commands, hooks, MCP servers, connectors,
+  LSP servers, and executables.
+- Added optional project-aware discovery from a selected absolute working
+  directory to its Git root, including Codex and Claude skill layers, Codex
+  skill overrides, Claude legacy commands, and Claude project MCP approval
+  state.
+- Linked every displayed package, capability, and installation to versioned
+  evidence, with per-item scope, origin, effective state, freshness, and
+  evidence status in the UI.
+- Added bounded concurrent plugin inspection, cancellation, unique evidence
+  identifiers, missing-versus-denied path handling, and plugin-provided MCP
+  de-duplication.
+
+### Gate evidence
+
+On 2026-07-27, the native app rendered fresh local inventories for both agents
+as complete while scanning a selected repository context. A read-only SSH smoke
+rendered Claude Code as complete and Codex as partial because the agent reported
+two installed-plugin component paths that were absent on that host. The UI
+preserved the installed packages and exposed the missing component evidence
+instead of treating the scan as complete.
+
+Automated coverage includes golden CLI fixtures, future and missing fields,
+malformed configuration, duplicate and symlinked skills, project MCP approval,
+plugin component name extraction without configuration values, plugin-provided
+MCP de-duplication, absent-versus-denied paths, older CLI help, and full adapter
+normalization through fake host sessions.
 
 ## M4: Inventory product and persistence
 

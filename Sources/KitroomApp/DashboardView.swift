@@ -52,11 +52,7 @@ struct DashboardView: View {
         case .hosts:
             HostsView()
         case .inventory:
-            FeaturePlaceholder(
-                title: "Inventory",
-                systemImage: "shippingbox",
-                message: "Inventory scanning is not implemented yet. Future scans will show verified skills, plugins, and MCP servers for each host."
-            )
+            InventoryView()
         case .catalogue:
             FeaturePlaceholder(
                 title: "Catalogue",
@@ -67,7 +63,7 @@ struct DashboardView: View {
             FeaturePlaceholder(
                 title: "Activity",
                 systemImage: "clock.arrow.circlepath",
-                message: "There are no operations to show. Kitroom does not execute inventory or mutation commands in this build."
+                message: "There are no operations to show. Kitroom can inspect inventory, but mutations and operation history are not implemented yet."
             )
         case .settings:
             FeaturePlaceholder(
@@ -75,6 +71,513 @@ struct DashboardView: View {
                 systemImage: "gear",
                 message: "Settings are not implemented yet. OpenSSH configuration and credentials remain outside Kitroom."
             )
+        }
+    }
+}
+
+private struct InventoryView: View {
+    @EnvironmentObject private var model: AppModel
+
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 24) {
+                header
+
+                if let host = selectedHost {
+                    ForEach(AgentKind.allCases) { agent in
+                        AgentInventorySection(
+                            agent: agent,
+                            snapshot: model.inventory(for: host, agent: agent)
+                        )
+                    }
+                } else {
+                    ContentUnavailableView(
+                        "No host selected",
+                        systemImage: "shippingbox",
+                        description: Text("Select a host before checking inventory.")
+                    )
+                }
+            }
+            .padding(28)
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .background(Color(nsColor: .windowBackgroundColor))
+        .navigationTitle("Inventory")
+    }
+
+    private var selectedHost: ManagedHost? {
+        model.selectedHost ?? model.hosts.first
+    }
+
+    private var header: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            HStack(alignment: .firstTextBaseline) {
+                VStack(alignment: .leading, spacing: 7) {
+                    Text("Inventory")
+                        .font(.largeTitle.bold())
+                    Text("Evidence-backed packages and capabilities reported by each agent.")
+                        .foregroundStyle(.secondary)
+                }
+
+                Spacer()
+
+                if let host = selectedHost,
+                   model.inventoryScanningHostIDs.contains(host.id) {
+                    ProgressView()
+                        .controlSize(.small)
+                    Button("Cancel") {
+                        model.cancelInventoryScan(host)
+                    }
+                } else if let host = selectedHost {
+                    Button {
+                        model.scanInventory(host)
+                    } label: {
+                        Label(
+                            hasAnySnapshot(for: host)
+                                ? "Check again"
+                                : "Check inventory",
+                            systemImage: "arrow.clockwise"
+                        )
+                    }
+                }
+            }
+
+            if !model.hosts.isEmpty {
+                HStack(alignment: .top, spacing: 16) {
+                    Picker(
+                        "Host",
+                        selection: Binding(
+                            get: { selectedHost?.id ?? model.hosts[0].id },
+                            set: { model.selectedHostID = $0 }
+                        )
+                    ) {
+                        ForEach(model.hosts) { host in
+                            Text(host.name).tag(host.id)
+                        }
+                    }
+                    .pickerStyle(.menu)
+                    .frame(maxWidth: 280, alignment: .leading)
+
+                    if let host = selectedHost {
+                        VStack(alignment: .leading, spacing: 4) {
+                            TextField(
+                                "Project directory (optional)",
+                                text: Binding(
+                                    get: {
+                                        model.projectDirectory(for: host)
+                                    },
+                                    set: {
+                                        model.setProjectDirectory($0, for: host)
+                                    }
+                                )
+                            )
+                            .textFieldStyle(.roundedBorder)
+                            .disabled(
+                                model.inventoryScanningHostIDs.contains(host.id)
+                            )
+                            .accessibilityHint(
+                                "Enter an absolute path on the selected host to include repository-scoped skills and configuration."
+                            )
+
+                            Text(
+                                "Optional absolute path on this host. Kitroom inspects parent layers up to the Git root."
+                            )
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                        }
+                        .frame(maxWidth: 440)
+                    }
+                }
+            }
+        }
+    }
+
+    private func hasAnySnapshot(for host: ManagedHost) -> Bool {
+        AgentKind.allCases.contains {
+            model.inventory(for: host, agent: $0) != nil
+        }
+    }
+}
+
+private struct AgentInventorySection: View {
+    let agent: AgentKind
+    let snapshot: InventorySnapshot?
+
+    var body: some View {
+        GroupBox {
+            VStack(alignment: .leading, spacing: 16) {
+                HStack {
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text(agent.displayName)
+                            .font(.title3.weight(.semibold))
+                        Text(snapshot?.agentVersion ?? "Version not checked")
+                            .font(.caption.monospaced())
+                            .foregroundStyle(.secondary)
+                    }
+
+                    Spacer()
+
+                    InventoryStatusBadge(status: snapshot?.status)
+                }
+
+                if let snapshot {
+                    if !snapshot.issues.isEmpty {
+                        VStack(alignment: .leading, spacing: 6) {
+                            ForEach(snapshot.issues) { issue in
+                                Label {
+                                    VStack(alignment: .leading, spacing: 2) {
+                                        Text(issue.summary)
+                                        Text(issue.detail)
+                                            .font(.caption)
+                                            .foregroundStyle(.secondary)
+                                    }
+                                } icon: {
+                                    Image(systemName: "exclamationmark.circle")
+                                }
+                            }
+                        }
+                        .padding(12)
+                        .background(.orange.opacity(0.08), in: RoundedRectangle(cornerRadius: 10))
+                    }
+
+                    if snapshot.packages.isEmpty
+                        && snapshot.providedCapabilities.isEmpty {
+                        Text(
+                            snapshot.status == .complete
+                                ? "No packages or capabilities were reported."
+                                : "No verified items are available from this scan."
+                        )
+                        .foregroundStyle(.secondary)
+                    } else {
+                        ForEach(snapshot.packages) { package in
+                            PackageInventoryRow(
+                                package: package,
+                                capabilities: snapshot.providedCapabilities.filter {
+                                    $0.packageID == package.id
+                                },
+                                installations: snapshot.installations.filter {
+                                    $0.packageID == package.id
+                                },
+                                evidence: snapshot.evidence,
+                                capturedAt: snapshot.capturedAt
+                            )
+                        }
+
+                        let standalone = snapshot.providedCapabilities.filter {
+                            $0.packageID == nil
+                        }
+                        if !standalone.isEmpty {
+                            VStack(alignment: .leading, spacing: 8) {
+                                Text("Directly configured")
+                                    .font(.headline)
+                                ForEach(standalone) { capability in
+                                    CapabilityLabel(
+                                        capability: capability,
+                                        installation: snapshot.installations.first {
+                                            $0.capabilityID == capability.id
+                                        },
+                                        evidence: snapshot.evidence,
+                                        capturedAt: snapshot.capturedAt
+                                    )
+                                }
+                            }
+                            .padding(.top, 4)
+                        }
+                    }
+
+                    Divider()
+                    Text(
+                        "Captured \(snapshot.capturedAt.formatted(date: .abbreviated, time: .standard)) · \(snapshot.evidence.count) evidence records"
+                    )
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                } else {
+                    Text("Not checked. Kitroom has not asked this agent for inventory on the selected host.")
+                        .foregroundStyle(.secondary)
+                }
+            }
+            .padding(.vertical, 4)
+        }
+    }
+}
+
+private struct PackageInventoryRow: View {
+    let package: PackageRecord
+    let capabilities: [ProvidedCapability]
+    let installations: [InstallationRecord]
+    let evidence: [EvidenceRecord]
+    let capturedAt: Date
+
+    var body: some View {
+        DisclosureGroup {
+            VStack(alignment: .leading, spacing: 8) {
+                if capabilities.isEmpty {
+                    Text("No components were declared or discovered.")
+                        .font(.callout)
+                        .foregroundStyle(.secondary)
+                } else {
+                    ForEach(capabilities) { capability in
+                        CapabilityLabel(
+                            capability: capability,
+                            installation: installations.first {
+                                $0.capabilityID == capability.id
+                            },
+                            evidence: evidence,
+                            capturedAt: capturedAt
+                        )
+                    }
+                }
+            }
+            .padding(.top, 8)
+        } label: {
+            HStack {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(package.displayName)
+                        .font(.headline)
+                    if let version = package.version {
+                        Text("Version \(version)")
+                            .font(.caption.monospaced())
+                            .foregroundStyle(.secondary)
+                    }
+                }
+
+                Spacer()
+
+                InventoryMetadataLine(
+                    installation: packageInstallation,
+                    evidenceStatus: evidenceStatus(
+                        ids: package.evidenceIDs
+                            + (packageInstallation?.evidenceIDs ?? []),
+                        evidence: evidence
+                    ),
+                    capturedAt: capturedAt
+                )
+            }
+        }
+        .padding(12)
+        .background(.secondary.opacity(0.05), in: RoundedRectangle(cornerRadius: 10))
+    }
+
+    private var packageInstallation: InstallationRecord? {
+        installations.first { $0.capabilityID == nil }
+            ?? installations.first
+    }
+}
+
+private struct CapabilityLabel: View {
+    let capability: ProvidedCapability
+    let installation: InstallationRecord?
+    let evidence: [EvidenceRecord]
+    let capturedAt: Date
+
+    var body: some View {
+        Label {
+            VStack(alignment: .leading, spacing: 4) {
+                HStack {
+                    Text(capability.displayName)
+                    Spacer()
+                    Text(capability.kind.displayName)
+                        .foregroundStyle(.secondary)
+                }
+                InventoryMetadataLine(
+                    installation: installation,
+                    evidenceStatus: evidenceStatus(
+                        ids: capability.evidenceIDs
+                            + (installation?.evidenceIDs ?? []),
+                        evidence: evidence
+                    ),
+                    capturedAt: capturedAt
+                )
+            }
+        } icon: {
+            Image(systemName: capability.kind.systemImage)
+        }
+        .font(.callout)
+    }
+}
+
+private struct InventoryMetadataLine: View {
+    let installation: InstallationRecord?
+    let evidenceStatus: EvidenceStatus?
+    let capturedAt: Date
+
+    var body: some View {
+        HStack(spacing: 8) {
+            if let installation {
+                Text(installation.scope.displayName)
+                Text(installation.origin.displayName)
+                Text(installation.state.displayName)
+            } else {
+                Text("Scope unknown")
+                Text("Origin unknown")
+                Text("State unknown")
+            }
+            Text("Evidence \(evidenceStatus?.displayName ?? "unknown")")
+            Text(capturedAt, style: .relative)
+        }
+        .font(.caption)
+        .foregroundStyle(.secondary)
+        .accessibilityElement(children: .combine)
+    }
+}
+
+private func evidenceStatus(
+    ids: [EvidenceRecord.ID],
+    evidence: [EvidenceRecord]
+) -> EvidenceStatus? {
+    let statuses = evidence
+        .filter { ids.contains($0.id) }
+        .map(\.status)
+    if statuses.contains(.failure) {
+        return .failure
+    }
+    if statuses.contains(.partial) {
+        return .partial
+    }
+    if statuses.contains(.success) {
+        return .success
+    }
+    return nil
+}
+
+private struct InventoryStatusBadge: View {
+    let status: InventoryStatus?
+
+    var body: some View {
+        Text(status?.displayName ?? "Not checked")
+            .font(.caption.weight(.medium))
+            .padding(.horizontal, 10)
+            .padding(.vertical, 6)
+            .background(.secondary.opacity(0.1), in: Capsule())
+    }
+}
+
+private extension InventoryStatus {
+    var displayName: String {
+        switch self {
+        case .complete:
+            "Complete"
+        case .partial:
+            "Partial"
+        case .unavailable:
+            "Unavailable"
+        }
+    }
+}
+
+private extension EffectiveState {
+    var displayName: String {
+        rawValue
+            .replacingOccurrences(
+                of: "([a-z])([A-Z])",
+                with: "$1 $2",
+                options: .regularExpression
+            )
+            .capitalized
+    }
+}
+
+private extension InventoryScope {
+    var displayName: String {
+        switch self {
+        case .user:
+            "User"
+        case .repository:
+            "Repository"
+        case .localProject:
+            "Local project"
+        case .managed:
+            "Managed"
+        case .system:
+            "System"
+        case .session:
+            "Session"
+        case .unknown:
+            "Scope unknown"
+        }
+    }
+}
+
+private extension InstallationOrigin {
+    var displayName: String {
+        switch self {
+        case .standalone:
+            "Standalone"
+        case .marketplace:
+            "Marketplace"
+        case .pluginProvided:
+            "Plugin-provided"
+        case .shared:
+            "Shared"
+        case .legacy:
+            "Legacy"
+        case .runtimeInjected:
+            "Runtime-injected"
+        case .bundled:
+            "Bundled"
+        case .unknown:
+            "Origin unknown"
+        }
+    }
+}
+
+private extension EvidenceStatus {
+    var displayName: String {
+        switch self {
+        case .success:
+            "verified"
+        case .partial:
+            "partial"
+        case .failure:
+            "failed"
+        }
+    }
+}
+
+private extension CapabilityKind {
+    var displayName: String {
+        switch self {
+        case .skill:
+            "Skill"
+        case .mcpServer:
+            "MCP server"
+        case .hook:
+            "Hook"
+        case .subagent:
+            "Subagent"
+        case .connector:
+            "Connector"
+        case .lspServer:
+            "LSP server"
+        case .command:
+            "Command"
+        case .executable:
+            "Executable"
+        case .other:
+            "Other"
+        }
+    }
+
+    var systemImage: String {
+        switch self {
+        case .skill:
+            "sparkles"
+        case .mcpServer:
+            "point.3.connected.trianglepath.dotted"
+        case .hook:
+            "arrow.triangle.branch"
+        case .subagent:
+            "person.2"
+        case .connector:
+            "link"
+        case .lspServer:
+            "text.and.command.macwindow"
+        case .command:
+            "terminal"
+        case .executable:
+            "shippingbox"
+        case .other:
+            "puzzlepiece.extension"
         }
     }
 }

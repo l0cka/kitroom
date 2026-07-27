@@ -1,0 +1,18 @@
+[
+  {
+    "id": "formatter@team",
+    "version": "2.0.0",
+    "scope": "user",
+    "enabled": true,
+    "installPath": "/fixtures/claude/plugins/formatter",
+    "installedAt": "2026-07-01T00:00:00Z",
+    "futureField": "ignored"
+  },
+  {
+    "id": "policy@managed",
+    "version": "1.0.0",
+    "scope": "managed",
+    "enabled": false,
+    "installPath": "/fixtures/claude/plugins/policy"
+  }
+]

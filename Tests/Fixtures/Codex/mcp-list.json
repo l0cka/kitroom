@@ -1,0 +1,33 @@
+[
+  {
+    "name": "docs",
+    "enabled": true,
+    "disabled_reason": null,
+    "auth_status": "unsupported",
+    "transport": {
+      "type": "stdio",
+      "command": "server",
+      "env": {
+        "API_TOKEN": "fixture-secret-never-retain"
+      }
+    }
+  },
+  {
+    "name": "disabled-server",
+    "enabled": false,
+    "disabled_reason": "Disabled by configuration",
+    "auth_status": "unsupported",
+    "transport": {
+      "type": "streamable_http",
+      "url": "https://example.invalid/mcp"
+    }
+  },
+  {
+    "name": "approval-server",
+    "enabled": true,
+    "auth_status": "pending approval",
+    "transport": {
+      "type": "streamable_http"
+    }
+  }
+]

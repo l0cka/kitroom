@@ -40,7 +40,11 @@ Contains immutable, `Sendable` values:
 - `ManagedHost`
 - `HostDiscoverySnapshot`
 - `AgentKind`
-- `ManagedExtension`
+- `CatalogSource`
+- `PackageRecord`
+- `ProvidedCapability`
+- `InstallationRecord`
+- `EvidenceRecord`
 - `InventorySnapshot`
 - `OperationPlan`
 
@@ -100,6 +104,14 @@ sequenceDiagram
 
 Raw command output should not become the public domain model. Adapters parse it
 into normalized values and retain bounded evidence references for diagnostics.
+Each displayed package, capability, and installation links back to one or more
+versioned evidence records. Skill, plugin, and MCP identities remain distinct
+even when the UI presents them in one hierarchy.
+
+An optional absolute working directory enables repository-aware discovery.
+Kitroom asks Git for the repository root, walks configuration and skill layers
+from that root to the selected directory, and passes every path as data to a
+structured host-session request.
 
 ## Mutations
 

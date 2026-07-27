@@ -38,13 +38,24 @@ public protocol AgentAdapter: Sendable {
     var discoveryProfile: AgentDiscoveryProfile { get }
     var implementedCapabilities: AdapterCapabilities { get }
 
-    func inspect(using session: any HostSession) async throws -> InventorySnapshot
+    func inspect(
+        context: InventoryContext,
+        using session: any HostSession
+    ) async throws -> InventorySnapshot
     func makePlan(
         kind: OperationKind,
         extensionID: String,
         from snapshot: InventorySnapshot,
         using session: any HostSession
     ) async throws -> OperationPlan
+}
+
+public extension AgentAdapter {
+    func inspect(
+        using session: any HostSession
+    ) async throws -> InventorySnapshot {
+        try await inspect(context: .hostOnly, using: session)
+    }
 }
 
 public enum AdapterError: LocalizedError, Sendable {
@@ -63,4 +74,3 @@ public enum AdapterError: LocalizedError, Sendable {
         }
     }
 }
-

@@ -12,11 +12,12 @@ host after an operation. A successful command exit is not sufficient evidence.
 
 ## Current status
 
-This repository implements bounded, read-only host discovery for the local Mac
-and user-selected OpenSSH aliases. It does not yet inventory extensions or
-execute mutations. Keep documentation and UI honest about what is implemented.
-Use **Not checked**, **Unknown**, **Partial discovery**, or **Not implemented**
-when live state has not been established.
+This repository implements bounded, read-only host discovery and normalized
+Claude Code and Codex inventory for the local Mac and user-selected OpenSSH
+aliases. It does not yet persist production inventory, browse available
+catalogues, compare hosts, or execute mutations. Keep documentation and UI
+honest about what is implemented. Use **Not checked**, **Unknown**,
+**Partial**, or **Not implemented** when live state has not been established.
 
 ## Technology
 
@@ -51,7 +52,7 @@ Sources/KitroomApp/
   Resources/             # App icon, logo, and color assets
 
 Sources/KitroomCore/
-  Domain/                # Agent, host, extension, inventory, operation types
+  Domain/                # Agent, host, package, capability, inventory, operation types
   Adapters/              # Agent-specific inspection and mutation contracts
   Infrastructure/        # Local and SSH execution boundaries
 
