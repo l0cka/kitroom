@@ -51,7 +51,11 @@ final class TransportTests: XCTestCase {
         let session = try SSHHostSession(host: host, executor: executor)
 
         let result = try await session.execute(
-            CommandRequest(executable: "/usr/bin/uname", arguments: ["-s"])
+            CommandRequest(
+                executable: "/usr/bin/uname",
+                arguments: ["-s"],
+                standardInput: Data("bounded".utf8)
+            )
         )
         let request = await executor.lastRequest
 
@@ -70,6 +74,7 @@ final class TransportTests: XCTestCase {
             ]
         )
         XCTAssertFalse(request?.arguments.contains("StrictHostKeyChecking=no") ?? true)
+        XCTAssertEqual(request?.standardInput, Data("bounded".utf8))
     }
 
     func testSSHFailureClassification() {

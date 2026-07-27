@@ -31,7 +31,8 @@ Kitroom is in active early development. The repository currently contains:
 - a native sidebar shell for hosts, inventory, catalogue, activity, and
   settings;
 - normalized package, capability, installation, inventory, and evidence models;
-- bounded local process execution and read-only OpenSSH transport;
+- bounded local process execution and OpenSSH transport with bounded standard
+  input for reviewed remote transfers;
 - local and remote host discovery with explicit failure states;
 - OpenSSH-alias setup that preserves the user's keys and host trust;
 - read-only Codex and Claude inventories for plugins, skills, MCP servers,
@@ -55,6 +56,11 @@ Kitroom is in active early development. The repository currently contains:
   catalogue-backed changes;
 - guarded add and remove for credential-free HTTPS Codex MCP servers, while
   blocking plugin-provided servers from the direct-configuration path;
+- guarded remote standalone-skill installation for Codex and Claude Code, with
+  a bounded digest manifest, explicit staging path, atomic rename, remote
+  backup, and fresh verification;
+- guarded remote Claude Code plugin enable and disable, with exact
+  configuration backup, inverse operation, and disconnect recovery;
 - unit tests and project documentation.
 
 The Hosts screen verifies platform details and agent availability. Inventory
@@ -62,10 +68,11 @@ and Catalogue run fresh read-only scans, preserve recent history, and label
 unverified, stale, or incomplete state explicitly. Catalogue can compare
 installed state between two hosts without changing either one. Guarded local
 operations cover standalone skills, selected native plugin operations, and
-credential-free HTTPS Codex MCP servers. Every path uses an expiring plan,
-fresh preflight inventory, configuration or content backup, post-change
-verification, and a durable activity record. Remote-host mutations are still
-planned.
+credential-free HTTPS Codex MCP servers. Remote operations currently cover
+standalone-skill installation and Claude Code plugin enable or disable. Every
+path uses an expiring plan, fresh preflight inventory, configuration or content
+backup, post-change verification, and a durable activity record. Other remote
+mutation paths remain planned.
 
 ## Product principles
 

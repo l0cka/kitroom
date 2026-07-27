@@ -33,7 +33,7 @@ struct ActivityProductView: View {
                         "No operations yet",
                         systemImage: "clock.arrow.circlepath",
                         description: Text(
-                            "Approved local changes will appear here with "
+                            "Approved changes will appear here with "
                                 + "their verification and rollback state."
                         )
                     )
@@ -56,6 +56,7 @@ struct ActivityProductView: View {
 struct OperationPlanReviewView: View {
     @EnvironmentObject private var model: AppModel
     let plan: OperationPlan
+    @State private var remoteTargetAcknowledged = false
 
     var body: some View {
         NavigationStack {
@@ -84,11 +85,17 @@ struct OperationPlanReviewView: View {
                 ToolbarItem(placement: .confirmationAction) {
                     TimelineView(.periodic(from: .now, by: 1)) { timeline in
                         Button(
-                            plan.approvalButtonTitle,
+                            needsRemoteAcknowledgement
+                                ? "Acknowledge remote target"
+                                : plan.approvalButtonTitle,
                             role: plan.kind == .uninstall ? .destructive : nil
                         ) {
-                            Task {
-                                await model.applyPendingOperation()
+                            if needsRemoteAcknowledgement {
+                                remoteTargetAcknowledged = true
+                            } else {
+                                Task {
+                                    await model.applyPendingOperation()
+                                }
                             }
                         }
                         .disabled(
@@ -105,6 +112,14 @@ struct OperationPlanReviewView: View {
 
     private var isApplying: Bool {
         model.applyingOperationIDs.contains(plan.id)
+    }
+
+    private var isRemote: Bool {
+        model.hosts.first { $0.id == plan.hostID }?.connection.isRemote == true
+    }
+
+    private var needsRemoteAcknowledgement: Bool {
+        isRemote && !remoteTargetAcknowledged
     }
 
     private var statusSummary: some View {
@@ -148,7 +163,22 @@ struct OperationPlanReviewView: View {
                 LabeledContent("Host") {
                     Text(hostName)
                 }
-                LabeledContent("Transport", value: "Local")
+                LabeledContent(
+                    "Transport",
+                    value: isRemote ? "OpenSSH" : "Local"
+                )
+                if isRemote {
+                    LabeledContent("Remote approval") {
+                        Text(
+                            remoteTargetAcknowledged
+                                ? "Target acknowledged"
+                                : "Acknowledge that this changes the selected SSH host before applying."
+                        )
+                        .foregroundStyle(
+                            remoteTargetAcknowledged ? .green : .orange
+                        )
+                    }
+                }
                 if let identity = plan.hostIdentity {
                     LabeledContent("Verified identity") {
                         Text(identity)
@@ -157,6 +187,12 @@ struct OperationPlanReviewView: View {
                     }
                 }
                 LabeledContent("Agent", value: plan.agent.displayName)
+                if let agentVersion = plan.agentVersion {
+                    LabeledContent("Verified agent version") {
+                        Text(agentVersion)
+                            .font(.caption.monospaced())
+                    }
+                }
                 LabeledContent(
                     "Scope",
                     value: operationScopeName(plan.scope)
@@ -531,6 +567,11 @@ private extension OperationPlan {
                 "Inspect"
             }
         }
+        if case .remotePlugin = execution {
+            return kind == .enable
+                ? "Enable remote plugin"
+                : "Disable remote plugin"
+        }
         return switch kind {
         case .install:
             "Install skill"
@@ -664,6 +705,10 @@ private func operationTransitionSummary(
         return spec.expectedAfterConfigured
             ? "Absent → configured"
             : "Configured → absent"
+    case .remoteSkill:
+        return "Absent → installed on SSH host"
+    case let .remotePlugin(spec):
+        return "\(spec.expectedBeforeState.rawValue.capitalized) → \(spec.expectedAfterState.rawValue)"
     case nil:
         return "Not specified"
     }

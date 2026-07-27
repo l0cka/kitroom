@@ -56,6 +56,8 @@
 		C00000000000000000000049 /* LocalSkillOperationEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00000000000000000000049 /* LocalSkillOperationEngine.swift */; };
 		C00000000000000000000050 /* NativePluginOperationEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00000000000000000000050 /* NativePluginOperationEngine.swift */; };
 		C00000000000000000000051 /* NativeMCPOperationEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00000000000000000000051 /* NativeMCPOperationEngine.swift */; };
+		C00000000000000000000052 /* RemoteSkillOperationEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00000000000000000000052 /* RemoteSkillOperationEngine.swift */; };
+		C00000000000000000000053 /* RemotePluginOperationEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00000000000000000000053 /* RemotePluginOperationEngine.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -132,6 +134,8 @@
 		B00000000000000000000049 /* LocalSkillOperationEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalSkillOperationEngine.swift; sourceTree = "<group>"; };
 		B00000000000000000000050 /* NativePluginOperationEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativePluginOperationEngine.swift; sourceTree = "<group>"; };
 		B00000000000000000000051 /* NativeMCPOperationEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeMCPOperationEngine.swift; sourceTree = "<group>"; };
+		B00000000000000000000052 /* RemoteSkillOperationEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RemoteSkillOperationEngine.swift; sourceTree = "<group>"; };
+		B00000000000000000000053 /* RemotePluginOperationEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RemotePluginOperationEngine.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -269,6 +273,8 @@
 				B00000000000000000000049 /* LocalSkillOperationEngine.swift */,
 				B00000000000000000000050 /* NativePluginOperationEngine.swift */,
 				B00000000000000000000051 /* NativeMCPOperationEngine.swift */,
+				B00000000000000000000052 /* RemoteSkillOperationEngine.swift */,
+				B00000000000000000000053 /* RemotePluginOperationEngine.swift */,
 				B00000000000000000000025 /* OperationApprovalStore.swift */,
 				B00000000000000000000026 /* ProcessExecutor.swift */,
 				B00000000000000000000030 /* RemoteCommandEncoder.swift */,
@@ -413,6 +419,8 @@
 				C00000000000000000000049 /* LocalSkillOperationEngine.swift in Sources */,
 				C00000000000000000000050 /* NativePluginOperationEngine.swift in Sources */,
 				C00000000000000000000051 /* NativeMCPOperationEngine.swift in Sources */,
+				C00000000000000000000052 /* RemoteSkillOperationEngine.swift in Sources */,
+				C00000000000000000000053 /* RemotePluginOperationEngine.swift in Sources */,
 				C00000000000000000000012 /* ManagedHost.swift in Sources */,
 				C00000000000000000000020 /* OperationApproval.swift in Sources */,
 				C00000000000000000000025 /* OperationApprovalStore.swift in Sources */,

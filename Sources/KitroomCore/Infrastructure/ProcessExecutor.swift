@@ -14,6 +14,7 @@ public struct SystemProcessExecutor: ProcessExecutor {
         let process = Process()
         let standardOutputPipe = Pipe()
         let standardErrorPipe = Pipe()
+        let standardInputPipe = request.standardInput.map { _ in Pipe() }
         let standardOutput = BoundedOutputBuffer(limit: request.maximumOutputBytes)
         let standardError = BoundedOutputBuffer(limit: request.maximumOutputBytes)
         let clock = ContinuousClock()
@@ -22,7 +23,7 @@ public struct SystemProcessExecutor: ProcessExecutor {
         process.executableURL = URL(fileURLWithPath: request.executable)
         process.arguments = request.arguments
         process.environment = request.environment
-        process.standardInput = FileHandle.nullDevice
+        process.standardInput = standardInputPipe ?? FileHandle.nullDevice
         process.standardOutput = standardOutputPipe
         process.standardError = standardErrorPipe
 
@@ -44,6 +45,27 @@ public struct SystemProcessExecutor: ProcessExecutor {
             throw HostSessionError.transportFailure(
                 "Could not launch \(request.executable): \(error.localizedDescription)"
             )
+        }
+
+        if let input = request.standardInput,
+           let standardInputPipe {
+            do {
+                try standardInputPipe.fileHandleForWriting.write(
+                    contentsOf: input
+                )
+                try standardInputPipe.fileHandleForWriting.close()
+            } catch {
+                terminate(process)
+                finishReading(
+                    standardOutputPipe,
+                    standardErrorPipe,
+                    standardOutput,
+                    standardError
+                )
+                throw HostSessionError.transportFailure(
+                    "Could not write bounded process input: \(error.localizedDescription)"
+                )
+            }
         }
 
         do {
@@ -180,6 +202,12 @@ private enum CommandRequestValidator {
         guard (1 ... 16_777_216).contains(request.maximumOutputBytes) else {
             throw HostSessionError.invalidRequest(
                 "The output limit must be between 1 byte and 16 MiB."
+            )
+        }
+
+        guard (request.standardInput?.count ?? 0) <= 64 * 1_024 * 1_024 else {
+            throw HostSessionError.invalidRequest(
+                "Standard input must not exceed 64 MiB."
             )
         }
 

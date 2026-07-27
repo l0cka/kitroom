@@ -147,7 +147,7 @@ An approval is valid only for the digest of the displayed plan. The digest
 includes the host, agent, capability, inventory time, and exact changes. A live
 state change requires a new plan and approval.
 
-The executable local paths are typed by capability. Kitroom does not expose a
+Executable mutation paths are typed by capability. Kitroom does not expose a
 generic command endpoint:
 
 - standalone-skill install, atomic update, and uninstall for Codex and Claude
@@ -155,8 +155,10 @@ generic command endpoint:
 - native Claude Code plugin install, update, enable, disable, and uninstall;
 - native Codex plugin install and uninstall;
 - native add and remove for credential-free HTTPS Codex MCP servers.
+- remote standalone-skill install for Codex and Claude Code;
+- remote Claude Code plugin enable and disable.
 
-Planning requires fresh complete inventory and a verified local host identity.
+Planning requires fresh complete inventory and a verified host identity.
 Catalogue-backed plugin installs and updates also bind the selected source,
 revision, version, and manifest digest, then refresh the catalogue before
 apply. Install sources for standalone skills are bounded, fully digested, and
@@ -165,19 +167,36 @@ skill beside its exact target before atomic rename. Update uses the platform's
 atomic rename-swap operation and retains the previous directory. Uninstall
 moves the exact directory into a private backup rather than deleting it.
 
+Remote plans additionally bind a stable, non-derived host identity and the
+discovered agent version. Immediately before approval, Kitroom repeats host
+discovery, verifies the agent executable and version, checks target
+permissions, and refreshes inventory. Remote skill plans also bind archive
+size, free-space requirements, a fixed staging path, and an exact backup path.
+
+Remote mutation commands use fixed versioned shell envelopes whose dynamic
+values are passed as positional data. Skill content is a bounded ustar stream
+sent through OpenSSH standard input. The envelope checks an embedded SHA-256
+manifest before atomically renaming the staged directory into the agent load
+path. Remote plugin toggles capture and re-digest the exact configuration file
+before invoking the discovered Claude Code executable with typed arguments.
+Connection loss triggers fresh-state recovery; unprovable outcomes remain
+failed or verification failed.
+
 Plugin and MCP engines invoke the agent's discovered executable with a typed
 argument array. They capture the exact configuration file, verify the copied
 backup digest, and never edit an agent's plugin cache. Direct MCP add accepts
 only HTTPS URLs without credentials, query parameters, or fragments.
 Plugin-provided MCP servers cannot use the direct removal path.
 
-Apply performs a fresh agent scan before changing state. The engine verifies
-filesystem or configuration evidence and asks the adapter for fresh effective
-state afterward. Verification failure triggers the operation-specific inverse
-where one exists and restores captured configuration. Claude Code update has
-no version-pinned inverse in the detected CLI, so its plan is high risk and
-states that automatic code rollback may be incomplete. Rollback failure
-remains a separate record and never becomes completed state.
+Apply performs a fresh agent scan before changing state. Remote review requires
+a separate acknowledgement of the SSH target before final approval. The engine
+verifies filesystem or configuration evidence and asks the adapter for fresh
+effective state afterward. Verification failure triggers the
+operation-specific inverse where one exists and restores captured
+configuration. Claude Code update has no version-pinned inverse in the detected
+CLI, so its plan is high risk and states that automatic code rollback may be
+incomplete. Rollback failure remains a separate record and never becomes
+completed state.
 
 ## Persistence
 

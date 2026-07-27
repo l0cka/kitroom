@@ -78,14 +78,19 @@ preview, approval, backup, verification, and rollback.
 
 ## Phase 5: Guarded remote mutations
 
-- [ ] Bind approval to verified remote-host identity
-- [ ] Implement remote backups and atomic writes
-- [ ] Add connection-loss and partial-application recovery
-- [ ] Apply one approved operation to an isolated remote test host
-- [ ] Compare post-change state with the approved plan
+- [x] Bind approval to verified remote-host identity and agent version
+- [x] Implement remote backups and atomic skill installation
+- [x] Add connection-loss and partial-application recovery
+- [x] Apply standalone-skill and native-plugin operations to isolated remote
+  profiles
+- [x] Compare post-change state with the approved plan
 
 Exit criterion: the same guarded workflow works on a remote host and reports
 recovery state honestly.
+
+Delivered scope is remote standalone-skill installation and Claude Code plugin
+enable or disable. Remote skill update/uninstall, broader plugin actions, and
+direct MCP management remain in Phase 6.
 
 ## Phase 6: Product hardening
 

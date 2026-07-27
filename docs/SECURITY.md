@@ -92,6 +92,19 @@ caches. Catalogue-backed installs and updates re-check source metadata before
 apply. A Claude Code update is marked high risk because the current native CLI
 does not expose a version-pinned inverse.
 
+Remote skill and plugin plans bind a stable host identity and observed agent
+version. Apply repeats host discovery, executable/version checks, target
+permissions, free-space checks for skill staging, and inventory before creating
+approval. The SSH alias is never accepted as host identity.
+
+Remote operations use fixed, versioned envelopes. Dynamic paths and identifiers
+are positional arguments, not interpolated shell source. Skill archives are
+limited to 1,000 regular files and 50 MiB, reject symbolic links and unsafe
+paths, carry per-file SHA-256 evidence, and enter the load path only through an
+exact atomic rename. Plugin toggles back up and re-digest the exact remote
+configuration before a typed native CLI call. Interrupted operations use fresh
+inventory to distinguish applied, rolled-back, and unprovable state.
+
 The first direct MCP configuration path is deliberately narrow: Codex, user
 scope, and credential-free HTTPS URLs without query parameters or fragments.
 Plugin-provided MCP servers are excluded. Removal requires a readable
@@ -111,5 +124,4 @@ credential files, and unrestricted configuration contents.
 - Sandboxed static inspection of downloaded content
 - Declared permission manifests
 - Operation-log integrity
-- SSH remote-host identity binding
 - Security review of update and rollback behaviour

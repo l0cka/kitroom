@@ -5,6 +5,7 @@ public struct CommandRequest: Hashable, Sendable {
     public let arguments: [String]
     public let environment: [String: String]
     public let workingDirectory: String?
+    public let standardInput: Data?
     public let timeout: Duration
     public let maximumOutputBytes: Int
 
@@ -13,6 +14,7 @@ public struct CommandRequest: Hashable, Sendable {
         arguments: [String] = [],
         environment: [String: String] = [:],
         workingDirectory: String? = nil,
+        standardInput: Data? = nil,
         timeout: Duration = .seconds(30),
         maximumOutputBytes: Int = 1_048_576
     ) {
@@ -20,6 +22,7 @@ public struct CommandRequest: Hashable, Sendable {
         self.arguments = arguments
         self.environment = environment
         self.workingDirectory = workingDirectory
+        self.standardInput = standardInput
         self.timeout = timeout
         self.maximumOutputBytes = maximumOutputBytes
     }

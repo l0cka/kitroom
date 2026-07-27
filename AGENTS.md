@@ -17,10 +17,13 @@ Code and Codex inventory, native catalogue browsing, host comparison, and
 durable local scan history for the local Mac and user-selected OpenSSH aliases.
 It also implements guarded local mutation paths for user-managed standalone
 skills, agent-managed native plugins, and directly configured,
-credential-free HTTPS Codex MCP servers. Remote-host mutations are not
-implemented yet. Keep documentation and UI honest about what is implemented.
-Use **Not checked**, **Unknown**, **Stale**, **Partial**, or **Not
-implemented** when live state has not been established.
+credential-free HTTPS Codex MCP servers. Guarded remote paths currently cover
+standalone-skill installation and Claude Code plugin enable or disable, with
+stable identity and agent-version binding, remote backups, and disconnect
+recovery. Other remote mutations are not implemented yet. Keep documentation
+and UI honest about what is implemented. Use **Not checked**, **Unknown**,
+**Stale**, **Partial**, or **Not implemented** when live state has not been
+established.
 
 ## Technology
 

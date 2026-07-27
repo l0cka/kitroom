@@ -72,7 +72,7 @@ struct InventoryProductView: View {
                 availableAgents: localInstallAgents
             ) { url, agent in
                 Task {
-                    await model.planLocalSkillInstall(
+                    await model.planSkillInstall(
                         sourceDirectory: url,
                         agent: agent
                     )
@@ -620,7 +620,7 @@ struct InventoryProductView: View {
 
     private var localInstallAgents: [AgentKind] {
         AgentKind.allCases.filter {
-            model.canPlanLocalSkillInstall(agent: $0)
+            model.canPlanSkillInstall(agent: $0)
         }
     }
 

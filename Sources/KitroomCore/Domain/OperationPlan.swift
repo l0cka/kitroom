@@ -178,10 +178,83 @@ public struct NativeMCPOperationSpec: Codable, Hashable, Sendable {
     }
 }
 
+public struct RemoteSkillOperationSpec: Codable, Hashable, Sendable {
+    public let envelopeVersion: Int
+    public let skillName: String
+    public let localSourcePath: String
+    public let remoteDestinationPath: String
+    public let remoteBackupPath: String
+    public let createsDestinationRoot: Bool
+    public let sourceDigest: String
+    public let archiveByteCount: Int
+
+    public init(
+        envelopeVersion: Int = 1,
+        skillName: String,
+        localSourcePath: String,
+        remoteDestinationPath: String,
+        remoteBackupPath: String,
+        createsDestinationRoot: Bool,
+        sourceDigest: String,
+        archiveByteCount: Int
+    ) {
+        self.envelopeVersion = envelopeVersion
+        self.skillName = skillName
+        self.localSourcePath = localSourcePath
+        self.remoteDestinationPath = remoteDestinationPath
+        self.remoteBackupPath = remoteBackupPath
+        self.createsDestinationRoot = createsDestinationRoot
+        self.sourceDigest = sourceDigest
+        self.archiveByteCount = archiveByteCount
+    }
+}
+
+public struct RemotePluginOperationSpec: Codable, Hashable, Sendable {
+    public let envelopeVersion: Int
+    public let agent: AgentKind
+    public let action: NativePluginAction
+    public let selector: String
+    public let scope: InventoryScope
+    public let executablePath: String
+    public let configurationState: NativePluginConfigurationState
+    public let remoteBackupPath: String
+    public let expectedBeforeState: EffectiveState
+    public let expectedAfterState: EffectiveState
+    public let expectedVersion: String?
+
+    public init(
+        envelopeVersion: Int = 1,
+        agent: AgentKind,
+        action: NativePluginAction,
+        selector: String,
+        scope: InventoryScope,
+        executablePath: String,
+        configurationState: NativePluginConfigurationState,
+        remoteBackupPath: String,
+        expectedBeforeState: EffectiveState,
+        expectedAfterState: EffectiveState,
+        expectedVersion: String? = nil
+    ) {
+        self.envelopeVersion = envelopeVersion
+        self.agent = agent
+        self.action = action
+        self.selector = selector
+        self.scope = scope
+        self.executablePath = executablePath
+        self.configurationState = configurationState
+        self.remoteBackupPath = remoteBackupPath
+        self.expectedBeforeState = expectedBeforeState
+        self.expectedAfterState = expectedAfterState
+        self.expectedVersion = expectedVersion
+    }
+}
+
 public enum OperationExecutionSpec: Codable, Hashable, Sendable {
     case localSkill(LocalSkillOperationSpec)
     case nativePlugin(NativePluginOperationSpec)
     case nativeMCP(NativeMCPOperationSpec)
+    case remoteSkill(RemoteSkillOperationSpec)
+    case remotePlugin(RemotePluginOperationSpec)
 }
 
 public struct OperationPreflight: Codable, Hashable, Sendable {
@@ -243,6 +316,7 @@ public struct OperationPlan: Identifiable, Codable, Hashable, Sendable {
     public let hostID: ManagedHost.ID
     public let hostIdentity: String?
     public let agent: AgentKind
+    public let agentVersion: String?
     public let extensionID: String?
     public let scope: InventoryScope?
     public let sourceReference: String?
@@ -266,6 +340,7 @@ public struct OperationPlan: Identifiable, Codable, Hashable, Sendable {
         hostID: ManagedHost.ID,
         hostIdentity: String? = nil,
         agent: AgentKind,
+        agentVersion: String? = nil,
         extensionID: String? = nil,
         scope: InventoryScope? = nil,
         sourceReference: String? = nil,
@@ -288,6 +363,7 @@ public struct OperationPlan: Identifiable, Codable, Hashable, Sendable {
         self.hostID = hostID
         self.hostIdentity = hostIdentity
         self.agent = agent
+        self.agentVersion = agentVersion
         self.extensionID = extensionID
         self.scope = scope
         self.sourceReference = sourceReference
@@ -318,6 +394,7 @@ public struct OperationPlan: Identifiable, Codable, Hashable, Sendable {
             hostID.uuidString,
             hostIdentity ?? "",
             agent.rawValue,
+            agentVersion ?? "",
             extensionID ?? "",
             scope?.rawValue ?? "",
             sourceReference ?? "",
@@ -393,6 +470,34 @@ public struct OperationPlan: Identifiable, Codable, Hashable, Sendable {
                 spec.configurationState.contentDigest ?? "absent",
                 String(spec.expectedBeforeConfigured),
                 String(spec.expectedAfterConfigured)
+            ].joined(separator: "\u{1f}")
+        case let .remoteSkill(spec):
+            return [
+                "remote-skill",
+                String(spec.envelopeVersion),
+                spec.skillName,
+                spec.localSourcePath,
+                spec.remoteDestinationPath,
+                spec.remoteBackupPath,
+                String(spec.createsDestinationRoot),
+                spec.sourceDigest,
+                String(spec.archiveByteCount)
+            ].joined(separator: "\u{1f}")
+        case let .remotePlugin(spec):
+            return [
+                "remote-plugin",
+                String(spec.envelopeVersion),
+                spec.agent.rawValue,
+                spec.action.rawValue,
+                spec.selector,
+                spec.scope.rawValue,
+                spec.executablePath,
+                spec.configurationState.path,
+                spec.configurationState.contentDigest ?? "absent",
+                spec.remoteBackupPath,
+                spec.expectedBeforeState.rawValue,
+                spec.expectedAfterState.rawValue,
+                spec.expectedVersion ?? ""
             ].joined(separator: "\u{1f}")
         case nil:
             return ""

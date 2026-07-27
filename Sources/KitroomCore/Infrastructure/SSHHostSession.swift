@@ -49,6 +49,7 @@ public struct SSHHostSession: HostSession {
                 remoteCommand
             ],
             environment: localEnvironment,
+            standardInput: request.standardInput,
             timeout: request.timeout,
             maximumOutputBytes: request.maximumOutputBytes
         )

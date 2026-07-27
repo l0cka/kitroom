@@ -80,6 +80,52 @@ final class DomainTests: XCTestCase {
         XCTAssertNotEqual(first.approvalDigest, second.approvalDigest)
     }
 
+    func testRemoteApprovalDigestBindsHostIdentityAndAgentVersion() {
+        let id = UUID()
+        let hostID = UUID()
+        let snapshotDate = Date(timeIntervalSince1970: 1_700_000_000)
+        let createdAt = Date(timeIntervalSince1970: 1_700_000_100)
+        func plan(identity: String, version: String) -> OperationPlan {
+            OperationPlan(
+                id: id,
+                kind: .install,
+                risk: .high,
+                hostID: hostID,
+                hostIdentity: identity,
+                agent: .codex,
+                agentVersion: version,
+                extensionID: "example",
+                basedOnSnapshotAt: snapshotDate,
+                changes: [
+                    PlannedChange(
+                        summary: "Install",
+                        target: "/remote/example"
+                    )
+                ],
+                createdAt: createdAt
+            )
+        }
+
+        let baseline = plan(
+            identity: "remote-machine-a",
+            version: "codex 1.0"
+        )
+        XCTAssertNotEqual(
+            baseline.approvalDigest,
+            plan(
+                identity: "remote-machine-b",
+                version: "codex 1.0"
+            ).approvalDigest
+        )
+        XCTAssertNotEqual(
+            baseline.approvalDigest,
+            plan(
+                identity: "remote-machine-a",
+                version: "codex 1.1"
+            ).approvalDigest
+        )
+    }
+
     func testHostAliasValidationRejectsShellSyntax() {
         XCTAssertTrue(HostAliasValidator.isValid("build-server"))
         XCTAssertTrue(HostAliasValidator.isValid("dev.example-1"))

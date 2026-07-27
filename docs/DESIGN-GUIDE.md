@@ -256,8 +256,9 @@ columns are name, kind, agent, scope, origin, state, version, and freshness.
 Keep catalogue refresh separate from package update. The screen must say that a
 refresh reads metadata and changes no installed state. Show source, installed
 and available versions, update support, compatibility, integrity, provided
-components, evidence, and freshness. Offer install or update only when the
-relevant guarded local flow and fresh capability evidence exist.
+components, evidence, and freshness. Offer install or update only when a
+guarded flow exists for the selected transport and fresh capability evidence
+supports it.
 
 ### Host comparison
 

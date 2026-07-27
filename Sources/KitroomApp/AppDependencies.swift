@@ -13,6 +13,8 @@ struct AppDependencies: Sendable {
     let localSkillOperations: LocalSkillOperationEngine?
     let nativePluginOperations: NativePluginOperationEngine?
     let nativeMCPOperations: NativeMCPOperationEngine?
+    let remoteSkillOperations: RemoteSkillOperationEngine?
+    let remotePluginOperations: RemotePluginOperationEngine?
     let operationIssue: String?
     let logger: any KitroomLogging
 
@@ -35,6 +37,10 @@ struct AppDependencies: Sendable {
         let localSkillOperations: LocalSkillOperationEngine?
         let nativePluginOperations: NativePluginOperationEngine?
         let nativeMCPOperations: NativeMCPOperationEngine?
+        let remoteSkillOperations: RemoteSkillOperationEngine? =
+            RemoteSkillOperationEngine()
+        let remotePluginOperations: RemotePluginOperationEngine? =
+            RemotePluginOperationEngine()
         var operationIssues: [String] = []
         do {
             localSkillOperations = try LocalSkillOperationEngine.live()
@@ -81,6 +87,8 @@ struct AppDependencies: Sendable {
             localSkillOperations: localSkillOperations,
             nativePluginOperations: nativePluginOperations,
             nativeMCPOperations: nativeMCPOperations,
+            remoteSkillOperations: remoteSkillOperations,
+            remotePluginOperations: remotePluginOperations,
             operationIssue: operationIssue,
             logger: SystemKitroomLogger()
         )

@@ -37,6 +37,43 @@ final class ProcessExecutorTests: XCTestCase {
         XCTAssertEqual(inheritedHome.standardOutput, "")
     }
 
+    func testForwardsBoundedStandardInput() async throws {
+        let input = Data("kitroom-transfer\n".utf8)
+        let result = try await executor.execute(
+            CommandRequest(
+                executable: "/bin/cat",
+                standardInput: input
+            )
+        )
+
+        XCTAssertTrue(result.succeeded)
+        XCTAssertEqual(result.standardOutput, "kitroom-transfer\n")
+    }
+
+    func testRejectsOversizedStandardInput() async {
+        do {
+            _ = try await executor.execute(
+                CommandRequest(
+                    executable: "/bin/cat",
+                    standardInput: Data(
+                        repeating: 0,
+                        count: 64 * 1_024 * 1_024 + 1
+                    )
+                )
+            )
+            XCTFail("Expected oversized input to be rejected.")
+        } catch let error as HostSessionError {
+            XCTAssertEqual(
+                error,
+                .invalidRequest(
+                    "Standard input must not exceed 64 MiB."
+                )
+            )
+        } catch {
+            XCTFail("Unexpected error: \(error)")
+        }
+    }
+
     func testBoundsLargeOutputAndRecordsTruncation() async throws {
         let result = try await executor.execute(
             CommandRequest(

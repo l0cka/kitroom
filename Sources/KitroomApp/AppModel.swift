@@ -463,13 +463,19 @@ final class AppModel: ObservableObject {
         )
     }
 
-    func canPlanLocalSkillInstall(agent: AgentKind) -> Bool {
-        do {
-            _ = try localMutationContext(agent: agent)
-            return true
-        } catch {
+    func canPlanSkillInstall(agent: AgentKind) -> Bool {
+        guard let host = selectedHost else {
             return false
         }
+        if host.connection == .local {
+            do {
+                _ = try localMutationContext(agent: agent)
+                return true
+            } catch {
+                return false
+            }
+        }
+        return remoteMutationContext(agent: agent) != nil
     }
 
     func canPlanLocalSkillUninstall(
@@ -497,7 +503,7 @@ final class AppModel: ObservableObject {
         return true
     }
 
-    func planLocalSkillInstall(
+    func planSkillInstall(
         sourceDirectory: URL,
         agent: AgentKind
     ) async {
@@ -509,6 +515,13 @@ final class AppModel: ObservableObject {
             }
         }
         do {
+            if selectedHost?.connection.isRemote == true {
+                try await planRemoteSkillInstall(
+                    sourceDirectory: sourceDirectory,
+                    agent: agent
+                )
+                return
+            }
             let context = try localMutationContext(agent: agent)
             let plan: OperationPlan
             do {
@@ -588,8 +601,7 @@ final class AppModel: ObservableObject {
         source: CatalogSource?,
         snapshot: InventorySnapshot
     ) -> NativePluginAction? {
-        guard dependencies.nativePluginOperations != nil,
-              package.agent == .claude,
+        guard package.agent == .claude,
               let installation,
               let source,
               source.agent == .claude,
@@ -603,7 +615,6 @@ final class AppModel: ObservableObject {
                 now: dependencies.clock.now
               ) == .current,
               let host = selectedHost,
-              host.connection == .local,
               installation.hostID == host.id,
               let discovery = discoveryByHost[host.id],
               discovery.connectionState == .reachable,
@@ -615,6 +626,17 @@ final class AppModel: ObservableObject {
               })
         else {
             return nil
+        }
+        if host.connection == .local {
+            guard dependencies.nativePluginOperations != nil,
+                  nativePluginPlanningContext(agent: .claude) != nil else {
+                return nil
+            }
+        } else {
+            guard dependencies.remotePluginOperations != nil,
+                  remoteAgentMutationContext(agent: .claude) != nil else {
+                return nil
+            }
         }
         switch installation.state {
         case .enabled:
@@ -642,14 +664,8 @@ final class AppModel: ObservableObject {
             ) else {
                 throw OperationProductError.unsupportedInventoryItem
             }
-            guard let engine = dependencies.nativePluginOperations else {
-                throw OperationProductError.operationEngineUnavailable(
-                    dependencies.operationIssue
-                )
-            }
             guard let host = selectedHost,
                   let discovery = discoveryByHost[host.id],
-                  let hostIdentity = discovery.identity?.value,
                   let homeDirectory = discovery.platform?.homeDirectory,
                   let executablePath = discovery.agents.first(where: {
                       $0.agent == .claude
@@ -662,18 +678,50 @@ final class AppModel: ObservableObject {
             .appendingPathComponent(".claude/settings.json")
             .standardizedFileURL
             .path
-            let plan = try await engine.planClaudeToggle(
-                host: host,
-                hostIdentity: hostIdentity,
-                action: action,
-                package: package,
-                source: source,
-                installation: installation,
-                executablePath: executablePath,
-                configurationPaths: [configurationPath],
-                basedOnSnapshotAt: snapshot.capturedAt,
-                createdAt: dependencies.clock.now
-            )
+            let plan: OperationPlan
+            if host.connection.isRemote {
+                guard let context = remoteAgentMutationContext(
+                    agent: .claude
+                ), let engine = dependencies.remotePluginOperations else {
+                    throw OperationProductError.hostDiscoveryRequired
+                }
+                let session = try await dependencies.hostConnectionFactory
+                    .connect(to: host)
+                plan = try await engine.planClaudeToggle(
+                    host: host,
+                    hostIdentity: context.identity,
+                    agentVersion: context.agentVersion,
+                    action: action,
+                    package: package,
+                    source: source,
+                    installation: installation,
+                    executablePath: context.executablePath,
+                    configurationPath: configurationPath,
+                    remoteHomeDirectory: homeDirectory,
+                    session: session,
+                    basedOnSnapshotAt: snapshot.capturedAt,
+                    createdAt: dependencies.clock.now
+                )
+            } else {
+                guard let hostIdentity = discovery.identity?.value,
+                      let engine = dependencies.nativePluginOperations else {
+                    throw OperationProductError.operationEngineUnavailable(
+                        dependencies.operationIssue
+                    )
+                }
+                plan = try await engine.planClaudeToggle(
+                    host: host,
+                    hostIdentity: hostIdentity,
+                    action: action,
+                    package: package,
+                    source: source,
+                    installation: installation,
+                    executablePath: executablePath,
+                    configurationPaths: [configurationPath],
+                    basedOnSnapshotAt: snapshot.capturedAt,
+                    createdAt: dependencies.clock.now
+                )
+            }
             try await presentOperationPlan(plan)
         } catch {
             operationMessage = SensitiveValueRedactor.redact(
@@ -993,9 +1041,14 @@ final class AppModel: ObservableObject {
         }
 
         do {
-            guard let host = hosts.first(where: { $0.id == plan.hostID }),
-                  host.connection == .local else {
-                throw OperationProductError.localHostRequired
+            guard let host = hosts.first(where: { $0.id == plan.hostID }) else {
+                throw OperationProductError.hostDiscoveryRequired
+            }
+            if host.connection.isRemote {
+                try await verifyRemotePlanTarget(
+                    plan: plan,
+                    host: host
+                )
             }
             guard discoveryByHost[host.id]?.identity?.value
                     == plan.hostIdentity else {
@@ -1008,11 +1061,6 @@ final class AppModel: ObservableObject {
             }
             let session = try await dependencies.hostConnectionFactory
                 .connect(to: host)
-            let approval = OperationApproval(
-                plan: plan,
-                approvedAt: dependencies.clock.now
-            )
-            await dependencies.approvalStore.save(approval)
 
             let preflightSnapshot = try await adapter.inspect(
                 context: .hostOnly,
@@ -1044,6 +1092,11 @@ final class AppModel: ObservableObject {
                         catalogue: freshCatalogue
                     )
             }
+            let approval = OperationApproval(
+                plan: plan,
+                approvedAt: dependencies.clock.now
+            )
+            await dependencies.approvalStore.save(approval)
             let preflight = OperationPreflight(
                 inspectedAt: preflightSnapshot.capturedAt,
                 targetStateMatchesPlan: preflightMatches
@@ -1163,6 +1216,92 @@ final class AppModel: ObservableObject {
                         )
                     }
                 )
+            case .remoteSkill:
+                guard let engine = dependencies.remoteSkillOperations else {
+                    throw OperationProductError.operationEngineUnavailable(
+                        dependencies.operationIssue
+                    )
+                }
+                result = await engine.apply(
+                    plan: plan,
+                    approval: approval,
+                    preflight: preflight,
+                    session: session,
+                    now: dependencies.clock.now,
+                    verifyExpectedState: { [weak self] in
+                        await inspectOperationTarget(
+                            adapter: adapter,
+                            session: session,
+                            persistence: persistence,
+                            plan: plan,
+                            key: key,
+                            phase: .afterApply,
+                            update: { verified in
+                                await MainActor.run {
+                                    self?.inventoryByKey[key] = verified
+                                }
+                            }
+                        )
+                    },
+                    verifyRolledBackState: { [weak self] in
+                        await inspectOperationTarget(
+                            adapter: adapter,
+                            session: session,
+                            persistence: persistence,
+                            plan: plan,
+                            key: key,
+                            phase: .beforeApply,
+                            update: { verified in
+                                await MainActor.run {
+                                    self?.inventoryByKey[key] = verified
+                                }
+                            }
+                        )
+                    }
+                )
+            case .remotePlugin:
+                guard let engine = dependencies.remotePluginOperations else {
+                    throw OperationProductError.operationEngineUnavailable(
+                        dependencies.operationIssue
+                    )
+                }
+                result = await engine.apply(
+                    plan: plan,
+                    approval: approval,
+                    preflight: preflight,
+                    session: session,
+                    now: dependencies.clock.now,
+                    verifyExpectedState: { [weak self] in
+                        await inspectOperationTarget(
+                            adapter: adapter,
+                            session: session,
+                            persistence: persistence,
+                            plan: plan,
+                            key: key,
+                            phase: .afterApply,
+                            update: { verified in
+                                await MainActor.run {
+                                    self?.inventoryByKey[key] = verified
+                                }
+                            }
+                        )
+                    },
+                    verifyRolledBackState: { [weak self] in
+                        await inspectOperationTarget(
+                            adapter: adapter,
+                            session: session,
+                            persistence: persistence,
+                            plan: plan,
+                            key: key,
+                            phase: .beforeApply,
+                            update: { verified in
+                                await MainActor.run {
+                                    self?.inventoryByKey[key] = verified
+                                }
+                            }
+                        )
+                    }
+                )
             case nil:
                 throw OperationProductError.unsupportedInventoryItem
             }
@@ -1190,9 +1329,29 @@ final class AppModel: ObservableObject {
                 ? "The operation completed with fresh matching evidence."
                 : result.failure
         } catch {
-            operationMessage = SensitiveValueRedactor.redact(
+            let detail = SensitiveValueRedactor.redact(
                 error.localizedDescription
             )
+            operationMessage = detail
+            if let pending = pendingOperationPlan,
+               pending.id == plan.id {
+                let existing = operationRecords.first {
+                    $0.id == plan.id
+                } ?? awaitingRecord(for: plan)
+                let invalidated = existing.transitioned(
+                    to: .invalidated,
+                    at: dependencies.clock.now,
+                    message: "Fresh preflight checks invalidated the operation before apply.",
+                    failure: detail
+                )
+                upsertOperationRecord(invalidated)
+                try? await dependencies.persistence.saveOperationRecord(
+                    invalidated
+                )
+                await dependencies.approvalStore.removeApproval(for: plan.id)
+                pendingOperationPlan = nil
+                selectedSection = .activity
+            }
         }
     }
 
@@ -1263,6 +1422,251 @@ final class AppModel: ObservableObject {
             snapshot: snapshot,
             destinationRoot: destinationRoot
         )
+    }
+
+    private func planRemoteSkillInstall(
+        sourceDirectory: URL,
+        agent: AgentKind
+    ) async throws {
+        guard let context = remoteMutationContext(agent: agent),
+              let engine = dependencies.remoteSkillOperations else {
+            throw OperationProductError.freshCompleteInventoryRequired
+        }
+        let session = try await dependencies.hostConnectionFactory
+            .connect(to: context.host)
+        let rootResult = try await session.execute(
+            CommandRequest(
+                executable: "/bin/test",
+                arguments: [
+                    "-d",
+                    context.destinationRoot,
+                    "-a",
+                    "-w",
+                    context.destinationRoot
+                ],
+                environment: ["LC_ALL": "C"],
+                timeout: .seconds(10),
+                maximumOutputBytes: 16_384
+            )
+        )
+        let createsDestinationRoot: Bool
+        if rootResult.succeeded {
+            createsDestinationRoot = false
+        } else if rootResult.exitCode == 1 {
+            let parent = URL(
+                fileURLWithPath: context.destinationRoot
+            ).deletingLastPathComponent().path
+            let parentResult = try await session.execute(
+                CommandRequest(
+                    executable: "/bin/test",
+                    arguments: ["-d", parent, "-a", "-w", parent],
+                    environment: ["LC_ALL": "C"],
+                    timeout: .seconds(10),
+                    maximumOutputBytes: 16_384
+                )
+            )
+            guard parentResult.succeeded else {
+                throw OperationProductError.remoteTargetUnavailable
+            }
+            createsDestinationRoot = true
+        } else {
+            throw OperationProductError.remoteTargetUnavailable
+        }
+        let plan = try await engine.planInstall(
+            host: context.host,
+            hostIdentity: context.identity,
+            agent: agent,
+            agentVersion: context.agentVersion,
+            localSourceDirectory: sourceDirectory,
+            remoteDestinationRoot: context.destinationRoot,
+            remoteHomeDirectory: context.homeDirectory,
+            createsDestinationRoot: createsDestinationRoot,
+            basedOnSnapshotAt: context.snapshot.capturedAt,
+            createdAt: dependencies.clock.now
+        )
+        guard case let .remoteSkill(spec) = plan.execution else {
+            throw OperationProductError.unsupportedInventoryItem
+        }
+        let diskTarget = createsDestinationRoot
+            ? URL(fileURLWithPath: context.destinationRoot)
+                .deletingLastPathComponent().path
+            : context.destinationRoot
+        let disk = try await session.execute(
+            CommandRequest(
+                executable: "/bin/df",
+                arguments: ["-Pk", diskTarget],
+                environment: ["LC_ALL": "C"],
+                timeout: .seconds(10),
+                maximumOutputBytes: 32_768
+            )
+        )
+        guard disk.succeeded,
+              remoteAvailableBytes(from: disk.standardOutput)
+                >= Int64(spec.archiveByteCount * 2 + 1_048_576) else {
+            throw OperationProductError.insufficientRemoteDiskSpace
+        }
+        try await presentOperationPlan(plan)
+    }
+
+    private func remoteMutationContext(
+        agent: AgentKind
+    ) -> RemoteMutationContext? {
+        guard dependencies.remoteSkillOperations != nil,
+              let base = remoteAgentMutationContext(agent: agent),
+              let adapter = dependencies.adapterRegistry.adapter(for: agent),
+              let relativePath = adapter.userSkillRelativePath else {
+            return nil
+        }
+        let destinationRoot = URL(
+            fileURLWithPath: base.homeDirectory
+        )
+        .appendingPathComponent(relativePath, isDirectory: true)
+        .standardizedFileURL
+        .path
+        return RemoteMutationContext(
+            host: base.host,
+            identity: base.identity,
+            homeDirectory: base.homeDirectory,
+            agentVersion: base.agentVersion,
+            snapshot: base.snapshot,
+            destinationRoot: destinationRoot
+        )
+    }
+
+    private func remoteAgentMutationContext(
+        agent: AgentKind
+    ) -> RemoteAgentMutationContext? {
+        guard let host = selectedHost,
+              host.connection.isRemote,
+              let discovery = discoveryByHost[host.id],
+              discovery.connectionState == .reachable,
+              let identity = discovery.identity,
+              identity.kind != .derived,
+              let homeDirectory = discovery.platform?.homeDirectory,
+              let discoveredAgent = discovery.agents.first(where: {
+                  $0.agent == agent
+                      && $0.availability == .available
+              }),
+              let agentVersion = discoveredAgent.version,
+              let executablePath = discoveredAgent.executablePath,
+              executablePath.hasPrefix("/"),
+              let snapshot = inventory(for: host, agent: agent),
+              snapshot.status == .complete,
+              InventoryFreshness.evaluate(
+                  capturedAt: snapshot.capturedAt,
+                  now: dependencies.clock.now
+              ) == .current else {
+            return nil
+        }
+        return RemoteAgentMutationContext(
+            host: host,
+            identity: identity,
+            homeDirectory: homeDirectory,
+            agentVersion: agentVersion,
+            executablePath: executablePath,
+            snapshot: snapshot
+        )
+    }
+
+    private func verifyRemotePlanTarget(
+        plan: OperationPlan,
+        host: ManagedHost
+    ) async throws {
+        let discovery = await dependencies.hostDiscovery.discover(
+            host: host,
+            resolvedHost: resolvedHostByID[host.id]
+        )
+        discoveryByHost[host.id] = discovery
+        discoveryHistory.append(discovery)
+        try await dependencies.persistence.saveHostDiscoverySnapshot(
+            discovery
+        )
+        guard discovery.connectionState == .reachable else {
+            throw OperationProductError.remoteTargetUnavailable
+        }
+        guard let identity = discovery.identity,
+              identity.kind != .derived,
+              identity.value == plan.hostIdentity else {
+            throw OperationProductError.hostIdentityChanged
+        }
+        guard let expectedVersion = plan.agentVersion,
+              discovery.agents.contains(where: {
+                  $0.agent == plan.agent
+                      && $0.availability == .available
+                      && $0.version == expectedVersion
+              }) else {
+            throw OperationProductError.agentVersionChanged
+        }
+
+        if case let .remotePlugin(spec) = plan.execution {
+            guard discovery.agents.contains(where: {
+                $0.agent == plan.agent
+                    && $0.executablePath == spec.executablePath
+            }) else {
+                throw OperationProductError.agentVersionChanged
+            }
+            let parent = URL(
+                fileURLWithPath: spec.configurationState.path
+            ).deletingLastPathComponent().path
+            let session = try await dependencies.hostConnectionFactory
+                .connect(to: host)
+            let permission = try await session.execute(
+                CommandRequest(
+                    executable: "/bin/test",
+                    arguments: ["-d", parent, "-a", "-w", parent],
+                    environment: ["LC_ALL": "C"],
+                    timeout: .seconds(10),
+                    maximumOutputBytes: 16_384
+                )
+            )
+            guard permission.succeeded else {
+                throw OperationProductError.remoteTargetUnavailable
+            }
+            return
+        }
+        guard case let .remoteSkill(spec) = plan.execution else {
+            return
+        }
+        let session = try await dependencies.hostConnectionFactory
+            .connect(to: host)
+        let parentURL = URL(
+            fileURLWithPath: spec.remoteDestinationPath
+        ).deletingLastPathComponent()
+        let permissionTarget = spec.createsDestinationRoot
+            ? parentURL.deletingLastPathComponent().path
+            : parentURL.path
+        let parentExists = try await session.execute(
+            CommandRequest(
+                executable: "/bin/test",
+                arguments: [
+                    "-d",
+                    permissionTarget,
+                    "-a",
+                    "-w",
+                    permissionTarget
+                ],
+                environment: ["LC_ALL": "C"],
+                timeout: .seconds(10),
+                maximumOutputBytes: 16_384
+            )
+        )
+        guard parentExists.succeeded else {
+            throw OperationProductError.remoteTargetUnavailable
+        }
+        let disk = try await session.execute(
+            CommandRequest(
+                executable: "/bin/df",
+                arguments: ["-Pk", permissionTarget],
+                environment: ["LC_ALL": "C"],
+                timeout: .seconds(10),
+                maximumOutputBytes: 32_768
+            )
+        )
+        guard disk.succeeded,
+              remoteAvailableBytes(from: disk.standardOutput)
+                >= Int64(spec.archiveByteCount * 2 + 1_048_576) else {
+            throw OperationProductError.insufficientRemoteDiskSpace
+        }
     }
 
     private func nativePluginPlanningContext(
@@ -1346,6 +1750,24 @@ private struct NativePluginPlanningContext {
     let configurationPaths: [String]
 }
 
+private struct RemoteMutationContext {
+    let host: ManagedHost
+    let identity: HostIdentityEvidence
+    let homeDirectory: String
+    let agentVersion: String
+    let snapshot: InventorySnapshot
+    let destinationRoot: String
+}
+
+private struct RemoteAgentMutationContext {
+    let host: ManagedHost
+    let identity: HostIdentityEvidence
+    let homeDirectory: String
+    let agentVersion: String
+    let executablePath: String
+    let snapshot: InventorySnapshot
+}
+
 private func supports(
     _ feature: AdapterFeature,
     in reports: [AdapterCapabilityReport]
@@ -1389,6 +1811,55 @@ private func operationTargetMatches(
              (.update, .afterApply):
             return targetIsReported
         }
+    case let .remoteSkill(spec):
+        let targetIsReported = snapshot.installations.contains {
+            installation in
+            guard let path = installation.physicalOrigin else {
+                return false
+            }
+            return URL(fileURLWithPath: path).standardizedFileURL.path
+                == URL(
+                    fileURLWithPath: spec.remoteDestinationPath
+                ).standardizedFileURL.path
+                && installation.origin == .standalone
+                && installation.scope == .user
+        }
+        return phase == .beforeApply
+            ? !targetIsReported
+            : targetIsReported
+    case let .remotePlugin(spec):
+        let parts = spec.selector.split(
+            separator: "@",
+            omittingEmptySubsequences: false
+        )
+        guard parts.count == 2 else {
+            return false
+        }
+        let sourceIDs = Set(
+            snapshot.catalogSources.filter {
+                $0.name == String(parts[1])
+                    && ($0.reference ?? $0.name)
+                        == plan.sourceReference
+            }.map(\.id)
+        )
+        guard let package = snapshot.packages.first(where: {
+            $0.name == String(parts[0])
+                && $0.sourceID.map(sourceIDs.contains) == true
+        }), let installation = snapshot.installations.first(where: {
+            $0.packageID == package.id
+                && $0.scope == spec.scope
+        }) else {
+            return false
+        }
+        let expected = phase == .beforeApply
+            ? spec.expectedBeforeState
+            : spec.expectedAfterState
+        return installation.state == expected
+            && (
+                spec.expectedVersion == nil
+                    || installation.installedVersion
+                        == spec.expectedVersion
+            )
     case let .nativePlugin(spec):
         let parts = spec.selector.split(
             separator: "@",
@@ -1545,6 +2016,9 @@ private enum OperationProductError: LocalizedError {
     case unsupportedInventoryItem
     case missingExactTarget
     case targetOutsideUserSkillRoot
+    case remoteTargetUnavailable
+    case agentVersionChanged
+    case insufficientRemoteDiskSpace
 
     var errorDescription: String? {
         switch self {
@@ -1570,8 +2044,29 @@ private enum OperationProductError: LocalizedError {
             "The inventory does not contain an exact installed path."
         case .targetOutsideUserSkillRoot:
             "The installed path is outside the agent's verified user skill directory."
+        case .remoteTargetUnavailable:
+            "The remote skill directory or its parent is unavailable or not writable."
+        case .agentVersionChanged:
+            "The verified remote agent version no longer matches the plan."
+        case .insufficientRemoteDiskSpace:
+            "The remote target does not have enough verified free space for staging and recovery."
         }
     }
+}
+
+private func remoteAvailableBytes(
+    from output: String
+) -> Int64 {
+    let lines = output.split(whereSeparator: \.isNewline)
+    guard let row = lines.last else {
+        return 0
+    }
+    let columns = row.split(whereSeparator: \.isWhitespace)
+    guard columns.count >= 4,
+          let availableKilobytes = Int64(columns[3]) else {
+        return 0
+    }
+    return availableKilobytes * 1_024
 }
 
 struct InventoryKey: Hashable, Sendable {
