@@ -128,8 +128,8 @@ state change requires a new plan and approval.
 
 ## Persistence
 
-The initial persistence model should use a small local SQLite store or SwiftData
-for:
+Kitroom uses a local SwiftData store, as recorded in
+[ADR 0003](decisions/0003-swiftdata-persistence.md), for:
 
 - host metadata, excluding SSH private key material;
 - normalized inventory snapshots;
@@ -137,8 +137,19 @@ for:
 - operation plans and status;
 - redacted verification evidence.
 
-Persistence technology is deferred until the inventory model has been exercised
-against representative local and remote data.
+The domain remains composed of immutable `Codable` values. SwiftData stores
+versioned encoded envelopes so persistence details do not leak into adapters or
+views. Host metadata has one current record. Discovery and inventory scans
+retain bounded history while current-state reads select the latest value for
+each host or host-and-agent grain.
+
+If the store cannot be initialized, the app falls back visibly to an in-memory
+store and warns that history is not being saved. It never presents an empty
+fallback as confirmed persisted state.
+
+Diagnostic reports use a deliberately smaller projection. SSH aliases,
+resolved addresses, paths, evidence source references, raw command output,
+issue details, and configuration values are not exported.
 
 ## Extension points
 

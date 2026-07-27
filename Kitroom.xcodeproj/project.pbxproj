@@ -43,6 +43,10 @@
 		C00000000000000000000036 /* ClaudeInventoryParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00000000000000000000036 /* ClaudeInventoryParser.swift */; };
 		C00000000000000000000037 /* ClaudeMCPConfigurationParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00000000000000000000037 /* ClaudeMCPConfigurationParser.swift */; };
 		C00000000000000000000038 /* CodexInventoryParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00000000000000000000038 /* CodexInventoryParser.swift */; };
+		C00000000000000000000039 /* InventoryProductView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00000000000000000000039 /* InventoryProductView.swift */; };
+		C00000000000000000000040 /* InventoryPresentation.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00000000000000000000040 /* InventoryPresentation.swift */; };
+		C00000000000000000000041 /* SwiftDataKitroomPersistence.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00000000000000000000041 /* SwiftDataKitroomPersistence.swift */; };
+		C00000000000000000000042 /* DiagnosticReportBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00000000000000000000042 /* DiagnosticReportBuilder.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -106,6 +110,10 @@
 		B00000000000000000000036 /* ClaudeInventoryParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClaudeInventoryParser.swift; sourceTree = "<group>"; };
 		B00000000000000000000037 /* ClaudeMCPConfigurationParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClaudeMCPConfigurationParser.swift; sourceTree = "<group>"; };
 		B00000000000000000000038 /* CodexInventoryParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CodexInventoryParser.swift; sourceTree = "<group>"; };
+		B00000000000000000000039 /* InventoryProductView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InventoryProductView.swift; sourceTree = "<group>"; };
+		B00000000000000000000040 /* InventoryPresentation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InventoryPresentation.swift; sourceTree = "<group>"; };
+		B00000000000000000000041 /* SwiftDataKitroomPersistence.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SwiftDataKitroomPersistence.swift; sourceTree = "<group>"; };
+		B00000000000000000000042 /* DiagnosticReportBuilder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DiagnosticReportBuilder.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -160,6 +168,7 @@
 				B00000000000000000000004 /* AppSection.swift */,
 				B00000000000000000000002 /* AppModel.swift */,
 				B00000000000000000000003 /* DashboardView.swift */,
+				B00000000000000000000039 /* InventoryProductView.swift */,
 				B00000000000000000000001 /* KitroomApp.swift */,
 				B00000000000000000000005 /* Assets.xcassets */,
 			);
@@ -183,6 +192,7 @@
 				B00000000000000000000010 /* AgentKind.swift */,
 				B00000000000000000000034 /* ExtensionInventory.swift */,
 				B00000000000000000000027 /* HostDiscovery.swift */,
+				B00000000000000000000040 /* InventoryPresentation.swift */,
 				B00000000000000000000013 /* InventorySnapshot.swift */,
 				B00000000000000000000012 /* ManagedHost.swift */,
 				B00000000000000000000020 /* OperationApproval.swift */,
@@ -237,6 +247,8 @@
 				B00000000000000000000030 /* RemoteCommandEncoder.swift */,
 				B00000000000000000000031 /* SSHConfigurationResolver.swift */,
 				B00000000000000000000032 /* SSHHostSession.swift */,
+				B00000000000000000000041 /* SwiftDataKitroomPersistence.swift */,
+				B00000000000000000000042 /* DiagnosticReportBuilder.swift */,
 			);
 			path = Infrastructure;
 			sourceTree = "<group>";
@@ -336,6 +348,7 @@
 				C00000000000000000000004 /* AppSection.swift in Sources */,
 				C00000000000000000000002 /* AppModel.swift in Sources */,
 				C00000000000000000000003 /* DashboardView.swift in Sources */,
+				C00000000000000000000039 /* InventoryProductView.swift in Sources */,
 				C00000000000000000000001 /* KitroomApp.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -354,6 +367,7 @@
 				C00000000000000000000017 /* CodexAdapter.swift in Sources */,
 				C00000000000000000000038 /* CodexInventoryParser.swift in Sources */,
 				C00000000000000000000034 /* ExtensionInventory.swift in Sources */,
+				C00000000000000000000040 /* InventoryPresentation.swift in Sources */,
 				C00000000000000000000018 /* HostConnectionFactory.swift in Sources */,
 				C00000000000000000000027 /* HostDiscovery.swift in Sources */,
 				C00000000000000000000028 /* HostDiscoveryService.swift in Sources */,
@@ -372,6 +386,8 @@
 				C00000000000000000000030 /* RemoteCommandEncoder.swift in Sources */,
 				C00000000000000000000031 /* SSHConfigurationResolver.swift in Sources */,
 				C00000000000000000000032 /* SSHHostSession.swift in Sources */,
+				C00000000000000000000041 /* SwiftDataKitroomPersistence.swift in Sources */,
+				C00000000000000000000042 /* DiagnosticReportBuilder.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

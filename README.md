@@ -39,13 +39,16 @@ Kitroom is in active early development. The repository currently contains:
 - optional project-aware scanning from a selected working directory to its Git
   root;
 - per-item scope, origin, effective state, freshness, and evidence status;
+- durable SwiftData storage for hosts and bounded scan history;
+- inventory search and filters, source and evidence inspection, stale-state
+  warnings, and redacted diagnostic export;
 - an approval-first operation model;
 - unit tests and project documentation.
 
 The Hosts screen verifies platform details and agent availability. The
-Inventory screen runs fresh read-only scans and labels unverified or incomplete
-state explicitly. Persistence, catalogue comparison, and mutating operations
-are not implemented yet.
+Inventory screen runs fresh read-only scans, preserves recent history, and
+labels unverified, stale, or incomplete state explicitly. Catalogue comparison
+and mutating operations are not implemented yet.
 
 ## Product principles
 

@@ -8,6 +8,7 @@ struct AppDependencies: Sendable {
     let sshConfigurationResolver: any SSHConfigurationResolving
     let adapterRegistry: any AgentAdapterRegistry
     let persistence: any KitroomPersistence
+    let persistenceIssue: String?
     let approvalStore: any OperationApprovalStore
     let logger: any KitroomLogging
 
@@ -16,6 +17,17 @@ struct AppDependencies: Sendable {
         let hostConnectionFactory = DefaultHostConnectionFactory(
             executor: processExecutor
         )
+        let persistence: any KitroomPersistence
+        let persistenceIssue: String?
+        do {
+            persistence = try SwiftDataKitroomPersistence.live()
+            persistenceIssue = nil
+        } catch {
+            persistence = InMemoryKitroomPersistence()
+            persistenceIssue = SensitiveValueRedactor.redact(
+                error.localizedDescription
+            )
+        }
 
         return Self(
             clock: SystemKitroomClock(),
@@ -28,7 +40,8 @@ struct AppDependencies: Sendable {
                 executor: processExecutor
             ),
             adapterRegistry: DefaultAgentAdapterRegistry(),
-            persistence: InMemoryKitroomPersistence(),
+            persistence: persistence,
+            persistenceIssue: persistenceIssue,
             approvalStore: InMemoryOperationApprovalStore(),
             logger: SystemKitroomLogger()
         )

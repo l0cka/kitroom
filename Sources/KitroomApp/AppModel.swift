@@ -8,10 +8,12 @@ final class AppModel: ObservableObject {
 
     @Published private(set) var hosts: [ManagedHost]
     @Published private(set) var discoveryByHost: [ManagedHost.ID: HostDiscoverySnapshot] = [:]
+    @Published private(set) var discoveryHistory: [HostDiscoverySnapshot] = []
     @Published private(set) var resolvedHostByID: [ManagedHost.ID: String] = [:]
     @Published private(set) var inventoryByKey: [InventoryKey: InventorySnapshot] = [:]
     @Published private(set) var inventoryScanningHostIDs: Set<ManagedHost.ID> = []
     @Published var projectDirectoryByHost: [ManagedHost.ID: String] = [:]
+    @Published private(set) var persistenceWarning: String?
 
     let dependencies: AppDependencies
 
@@ -25,6 +27,7 @@ final class AppModel: ObservableObject {
     ) {
         self.hosts = hosts
         self.dependencies = dependencies
+        persistenceWarning = dependencies.persistenceIssue
         selectedHostID = hosts.first?.id
     }
 
@@ -38,6 +41,17 @@ final class AppModel: ObservableObject {
 
     func discovery(for host: ManagedHost) -> HostDiscoverySnapshot? {
         discoveryByHost[host.id]
+    }
+
+    func lastSuccessfulDiscovery(for host: ManagedHost) -> Date? {
+        discoveryHistory
+            .filter {
+                $0.hostID == host.id
+                    && $0.connectionState == .reachable
+                    && $0.completedAt != nil
+            }
+            .compactMap(\.completedAt)
+            .max()
     }
 
     func inventory(
@@ -90,7 +104,28 @@ final class AppModel: ObservableObject {
                     )
                 }
             )
+
+            discoveryHistory = try await dependencies.persistence
+                .loadHostDiscoveryHistory(hostID: nil, limit: 500)
+            let latestDiscovery = try await dependencies.persistence
+                .loadHostDiscoverySnapshots()
+            discoveryByHost = Dictionary(
+                uniqueKeysWithValues: latestDiscovery.map {
+                    ($0.hostID, $0)
+                }
+            )
+            resolvedHostByID = Dictionary(
+                uniqueKeysWithValues: latestDiscovery.compactMap {
+                    guard let resolvedHost = $0.resolvedHost else {
+                        return nil
+                    }
+                    return ($0.hostID, resolvedHost)
+                }
+            )
         } catch {
+            persistenceWarning = SensitiveValueRedactor.redact(
+                error.localizedDescription
+            )
             dependencies.logger.record(
                 KitroomLogEvent(
                     level: .error,
@@ -175,7 +210,7 @@ final class AppModel: ObservableObject {
                 resolvedHost: resolvedHost
             )
             guard !Task.isCancelled else {
-                discoveryByHost[host.id] = HostDiscoverySnapshot(
+                let cancelled = HostDiscoverySnapshot(
                     hostID: host.id,
                     attemptedAt: snapshot.attemptedAt,
                     completedAt: dependencies.clock.now,
@@ -188,6 +223,10 @@ final class AppModel: ObservableObject {
                         )
                     ]
                 )
+                discoveryByHost[host.id] = cancelled
+                discoveryHistory.append(cancelled)
+                try? await dependencies.persistence
+                    .saveHostDiscoverySnapshot(cancelled)
                 scanTasks[host.id] = nil
                 return
             }
@@ -196,6 +235,15 @@ final class AppModel: ObservableObject {
                 resolvedHostByID[host.id] = resolvedHost
             }
             discoveryByHost[host.id] = snapshot
+            discoveryHistory.append(snapshot)
+            do {
+                try await dependencies.persistence
+                    .saveHostDiscoverySnapshot(snapshot)
+            } catch {
+                persistenceWarning = SensitiveValueRedactor.redact(
+                    error.localizedDescription
+                )
+            }
             scanTasks[host.id] = nil
 
             dependencies.logger.record(
@@ -252,10 +300,18 @@ final class AppModel: ObservableObject {
                     inventoryByKey[
                         InventoryKey(hostID: host.id, agent: agent)
                     ] = snapshot
-                    try await dependencies.persistence.saveInventorySnapshot(
-                        snapshot
-                    )
+                    do {
+                        try await dependencies.persistence.saveInventorySnapshot(
+                            snapshot
+                        )
+                    } catch {
+                        persistenceWarning = SensitiveValueRedactor.redact(
+                            error.localizedDescription
+                        )
+                    }
                 }
+            } catch is CancellationError {
+                // Cancellation preserves the last completed snapshots.
             } catch {
                 let detail = SensitiveValueRedactor.redact(
                     error.localizedDescription
@@ -276,6 +332,8 @@ final class AppModel: ObservableObject {
                     inventoryByKey[
                         InventoryKey(hostID: host.id, agent: agent)
                     ] = snapshot
+                    try? await dependencies.persistence
+                        .saveInventorySnapshot(snapshot)
                 }
             }
 
@@ -286,6 +344,15 @@ final class AppModel: ObservableObject {
 
     func cancelInventoryScan(_ host: ManagedHost) {
         inventoryTasks[host.id]?.cancel()
+    }
+
+    func makeDiagnosticReport() throws -> Data {
+        try DiagnosticReportBuilder.makeReport(
+            generatedAt: dependencies.clock.now,
+            hosts: hosts,
+            discoveries: Array(discoveryByHost.values),
+            inventories: Array(inventoryByKey.values)
+        )
     }
 }
 

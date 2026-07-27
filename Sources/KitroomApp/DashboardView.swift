@@ -52,7 +52,7 @@ struct DashboardView: View {
         case .hosts:
             HostsView()
         case .inventory:
-            InventoryView()
+            InventoryProductView()
         case .catalogue:
             FeaturePlaceholder(
                 title: "Catalogue",
@@ -626,6 +626,9 @@ private struct HostsView: View {
                             host: host,
                             isSelected: host.id == model.selectedHostID,
                             discovery: model.discovery(for: host),
+                            lastSuccessfulAt: model.lastSuccessfulDiscovery(
+                                for: host
+                            ),
                             resolvedHost: model.resolvedHostByID[host.id],
                             scan: {
                                 model.scan(host)
@@ -680,6 +683,7 @@ private struct HostCard: View {
     let host: ManagedHost
     let isSelected: Bool
     let discovery: HostDiscoverySnapshot?
+    let lastSuccessfulAt: Date?
     let resolvedHost: String?
     let scan: () -> Void
     let cancelScan: () -> Void
@@ -738,6 +742,59 @@ private struct HostCard: View {
                 }
                 .font(.caption)
                 .foregroundStyle(.secondary)
+            }
+
+            if let identity = discovery?.identity {
+                Label(
+                    "Identity verified via \(identity.kind.displayName)",
+                    systemImage: "checkmark.shield"
+                )
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            }
+
+            if discovery != nil || lastSuccessfulAt != nil {
+                HStack(spacing: 18) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Last attempt")
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                        if let attemptedAt = discovery?.attemptedAt {
+                            Text(attemptedAt, style: .relative)
+                                .font(.caption)
+                        } else {
+                            Text("Not checked")
+                                .font(.caption)
+                        }
+                    }
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Last successful")
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                        if let lastSuccessfulAt {
+                            Text(lastSuccessfulAt, style: .relative)
+                                .font(.caption)
+                        } else {
+                            Text("None recorded")
+                                .font(.caption)
+                        }
+                    }
+                }
+                .accessibilityElement(children: .combine)
+            }
+
+            if let issues = discovery?.issues, !issues.isEmpty {
+                VStack(alignment: .leading, spacing: 5) {
+                    ForEach(issues) { issue in
+                        Label(issue.summary, systemImage: "exclamationmark.circle")
+                            .font(.caption)
+                            .foregroundStyle(.orange)
+                    }
+                }
+                .accessibilityLabel(
+                    "Host scan issues: "
+                        + issues.map(\.summary).joined(separator: ", ")
+                )
             }
 
             HStack(spacing: 24) {
@@ -962,6 +1019,19 @@ private extension HostConnectionState {
             "exclamationmark.circle"
         case .cancelled:
             "xmark.circle"
+        }
+    }
+}
+
+private extension HostIdentityKind {
+    var displayName: String {
+        switch self {
+        case .platformUUID:
+            "platform UUID"
+        case .machineID:
+            "machine ID"
+        case .derived:
+            "bounded platform evidence"
         }
     }
 }

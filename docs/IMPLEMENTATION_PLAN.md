@@ -463,6 +463,8 @@ normalization through fake host sessions.
 
 ## M4: Inventory product and persistence
 
+**Status:** In progress
+
 ### Objective
 
 Turn normalized inventory into the first useful end-to-end product.
@@ -508,6 +510,31 @@ Turn normalized inventory into the first useful end-to-end product.
 - A user can answer what is installed, where it came from, which agent sees it,
   and whether the evidence is current on both hosts.
 - No mutating controls are enabled yet.
+
+### Delivered so far
+
+- Chose SwiftData in ADR 0003 after exercising the normalized local and remote
+  inventory model.
+- Added a versioned envelope store for host metadata, host discovery history,
+  inventory history, evidence, and scan issues.
+- Retained bounded history while loading only the newest current record for
+  each host and host-and-agent grain.
+- Added host last-attempted and last-successful times, platform and agent
+  versions, connection state, and partial issue summaries.
+- Added inventory search plus host, agent, kind, scope, origin, enabled-state,
+  and update-state filters.
+- Added source and evidence inspection, current/stale/future-dated state,
+  Command-R refresh, cancellation, keyboard-operable item controls, and
+  explicit accessibility labels.
+- Added JSON diagnostic export that omits aliases, resolved hosts, paths,
+  evidence source references, raw output, issue details, and configuration
+  values.
+
+Automated coverage includes empty-store bootstrap and reopen, latest-state
+replacement with historical retention, freshness transitions, combined search
+and filter matching, stable accessibility descriptions, and diagnostic
+redaction. Native visual and restart checks remain before this milestone can be
+marked complete.
 
 ## M5: Native catalogues, updates, and comparison
 

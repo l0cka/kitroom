@@ -42,7 +42,9 @@ is supported by recorded sandbox evidence.
 - [x] Inventory installed plugins, skills, MCP servers, and plugin components
 - [x] Preserve scope, origin, effective state, freshness, and evidence links
 - [x] Inspect optional repository layers from a selected working directory
-- [ ] Render complete, partial, unavailable, and stale inventory states
+- [x] Render complete, partial, unavailable, and stale inventory states
+- [x] Persist hosts and bounded scan history with SwiftData
+- [x] Add search, structured filters, and source/evidence inspection
 - [x] Add redacted diagnostics
 
 Exit criterion: Kitroom accurately inventories a local machine and a configured

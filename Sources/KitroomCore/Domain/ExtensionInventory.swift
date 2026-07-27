@@ -179,6 +179,7 @@ public struct InstallationRecord: Identifiable, Codable, Hashable, Sendable {
     public let origin: InstallationOrigin
     public let state: EffectiveState
     public let installedVersion: String?
+    public let updateStatus: UpdateStatus?
     public let physicalOrigin: String?
     public let restriction: ManagementRestriction
     public let evidenceIDs: [EvidenceRecord.ID]
@@ -193,6 +194,7 @@ public struct InstallationRecord: Identifiable, Codable, Hashable, Sendable {
         origin: InstallationOrigin,
         state: EffectiveState,
         installedVersion: String? = nil,
+        updateStatus: UpdateStatus? = nil,
         physicalOrigin: String? = nil,
         restriction: ManagementRestriction = .unknown,
         evidenceIDs: [EvidenceRecord.ID] = []
@@ -206,6 +208,7 @@ public struct InstallationRecord: Identifiable, Codable, Hashable, Sendable {
         self.origin = origin
         self.state = state
         self.installedVersion = installedVersion
+        self.updateStatus = updateStatus
         self.physicalOrigin = physicalOrigin
         self.restriction = restriction
         self.evidenceIDs = evidenceIDs
